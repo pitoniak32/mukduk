@@ -32,12 +32,12 @@ fn get_directories(path: PathBuf) -> Result<Vec<PathBuf>> {
                     }
                 }
                 Err(err) => {
-                    println!("An error occured, skipping entry: {err}");
+                    println!("An error occurred, skipping entry: {err}");
                     None
                 }
             },
             Err(err) => {
-                println!("An error occured, skipping entry: {err}");
+                println!("An error occurred, skipping entry: {err}");
                 None
             }
         })
