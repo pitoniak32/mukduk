@@ -1,4 +1,4 @@
-use std::{env, net::Ipv4Addr, path::PathBuf};
+use std::{env, path::PathBuf};
 
 /// # Use this for reading config from Environment Variables
 /// The goal with this enum is to provide a way to access typed configuration from Environement
@@ -51,6 +51,7 @@ pub enum ConfigEnvKey {
     XDGConfig,
     XDGData,
     XDGState,
+    ProjDir,
 }
 
 impl ConfigEnvKey {
@@ -60,6 +61,7 @@ impl ConfigEnvKey {
             ConfigEnvKey::XDGConfig => "XDG_CONFIG_HOME",
             ConfigEnvKey::XDGData => "XDG_DATA_HOME",
             ConfigEnvKey::XDGState => "XDG_STATE_HOME",
+            ConfigEnvKey::ProjDir => "PROJ_DIR",
         }
     }
 
@@ -69,6 +71,7 @@ impl ConfigEnvKey {
             ConfigEnvKey::XDGConfig => "",
             ConfigEnvKey::XDGData => "",
             ConfigEnvKey::XDGState => "",
+            ConfigEnvKey::ProjDir => "",
         }
     }
 }
@@ -105,6 +108,9 @@ impl From<ConfigEnvKey> for PathBuf {
             ConfigEnvKey::XDGState => PathBuf::from(
                 env::var(ConfigEnvKey::XDGState.as_str())
                     .expect("XDG_STATE_HOME env var should be set"),
+            ),
+            ConfigEnvKey::ProjDir => PathBuf::from(
+                env::var(ConfigEnvKey::ProjDir.as_str()).expect("PROJ_DIR env var should be set"),
             ),
             _ => panic!("this key cannot be converted to String. {DEFAULT_PANIC_MSG}"),
         }

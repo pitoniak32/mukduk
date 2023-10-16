@@ -1,23 +1,46 @@
 use anyhow::Result;
-use std::{
-    fs::{self, ReadDir},
-    path::PathBuf,
-};
+use std::{env, fs, path::PathBuf, process::Command};
 
 use crate::config::ConfigEnvKey;
 
 mod config;
 
 fn main() -> Result<()> {
-    let home_dir: PathBuf = PathBuf::from(ConfigEnvKey::Home);
-    let config_dir: PathBuf = PathBuf::from(ConfigEnvKey::XDGConfig);
-    let data_dir: PathBuf = PathBuf::from(ConfigEnvKey::XDGData);
-    let state_dir: PathBuf = PathBuf::from(ConfigEnvKey::XDGState);
+    // let home_dir: PathBuf = PathBuf::from(ConfigEnvKey::Home);
+    // let config_dir: PathBuf = PathBuf::from(ConfigEnvKey::XDGConfig);
+    // let data_dir: PathBuf = PathBuf::from(ConfigEnvKey::XDGData);
+    // let state_dir: PathBuf = PathBuf::from(ConfigEnvKey::XDGState);
+    let proj_dir: PathBuf = PathBuf::from(ConfigEnvKey::ProjDir);
+    let args: Vec<String> = env::args().collect();
 
-    println!("{home_dir:#?}, {config_dir:#?}, {data_dir:#?}, {state_dir:#?}");
-    println!("{:#?}", get_directories(config_dir)?);
+    if args.get(1).is_some_and(|a| a == "true") {
+        let dirs = get_directories(proj_dir)?;
+        list_directories(dirs);
+    } else {
+        let mut user_input = String::new();
+        let stdin = std::io::stdin();
+        stdin.read_line(&mut user_input)?;
+        let user_input = user_input.trim();
+        println!("got: {}", user_input);
+
+        let result = Command::new("tmux")
+            .arg("new-session")
+            .arg("-Ads")
+            .arg(user_input)
+            .arg("-c")
+            .arg("~")
+            .spawn()
+            .unwrap();
+        dbg!(result);
+    }
 
     Ok(())
+}
+
+fn list_directories(dirs: Vec<PathBuf>) {
+    for dir in dirs {
+        println!("{}", dir.file_name().unwrap().to_string_lossy());
+    }
 }
 
 fn get_directories(path: PathBuf) -> Result<Vec<PathBuf>> {
