@@ -1,8 +1,8 @@
 use anyhow::Result;
-use clap::{Parser, Subcommand};
+use clap::{Args, Parser, Subcommand, ValueEnum};
 use colored::Colorize;
 use inquire::Select;
-use std::{env, fmt::Display, fs, path::PathBuf, process::Command};
+use std::{fmt::Display, fs, path::PathBuf};
 
 use crate::config::ConfigEnvKey;
 
@@ -43,28 +43,98 @@ impl MukdukCli {
 
 #[derive(Subcommand)]
 enum Commands {
-    Project,
+    #[clap(subcommand)]
+    Project(ProjectSubcommand),
+}
+
+#[derive(Subcommand)]
+enum ProjectSubcommand {
+    Open(ProjectArgs),
+}
+
+/// Doc comment
+#[derive(Args)]
+struct ProjectArgs {
+    #[arg(short, long)]
+    multiplexer: Multi,
+}
+
+#[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, ValueEnum)]
+enum Multi {
+    Tmux,
+    Zellij,
 }
 
 impl Commands {
     fn handle_cmd(command: Commands) -> Result<()> {
         match command {
-            Commands::Project => {
-                let proj_dir: PathBuf = PathBuf::from(ConfigEnvKey::ProjDir);
-                log::debug!("{:?}", &proj_dir);
-                let dirs = get_directories(proj_dir)?;
+            Commands::Project(project_cmd) => {
+                match project_cmd {
+                    ProjectSubcommand::Open(project_open_args) => {
+                        let project = pick_project()?;
 
-                let dir = Select::new(
-                    &format!("Select your project:"),
-                    dirs.iter().map(|d| d.to_string_lossy()).collect(),
-                )
-                .prompt()
-                .unwrap();
-                log::info!("selected: {}", dir);
+                        match project_open_args.multiplexer {
+                            Multi::Tmux => {
+                                log::debug!(
+                                    "opening {:?} session with project: {:?}!",
+                                    project_open_args.multiplexer,
+                                    project
+                                )
+                                // TODO: implement Command to create tmux session.
+                            }
+                            Multi::Zellij => {
+                                log::debug!(
+                                    "opening {:?} session with project: {:?}!",
+                                    project_open_args.multiplexer,
+                                    project
+                                )
+                                // TODO: implement Command to create zellij session.
+                            }
+                        }
+                    }
+                }
             }
         }
         Ok(())
     }
+}
+
+#[derive(Debug)]
+struct Project {
+    path: PathBuf,
+    name: String,
+}
+
+impl Display for Project {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.name)
+    }
+}
+
+fn pick_project() -> Result<Project> {
+    let proj_dir: PathBuf = PathBuf::from(ConfigEnvKey::ProjDir);
+
+    log::debug!("Using project_dir: {:?}", &proj_dir);
+
+    let projects = get_directories(proj_dir)?
+        .iter()
+        .map(|d| Project {
+            path: d.to_path_buf(),
+            name: d
+                .file_name()
+                .expect("file_name should be representable as a String")
+                .to_string_lossy()
+                .to_string(),
+        })
+        .collect();
+
+    let project = Select::new(&format!("Select your project:"), projects)
+        .prompt()
+        .unwrap();
+
+    log::debug!("selected: {}", project);
+
+    Ok(project)
 }
 
 fn main() -> Result<()> {
