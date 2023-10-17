@@ -12,19 +12,20 @@ mod config;
 #[command(author, version, about)]
 /// Manage your terminal environment.
 struct MukdukCli {
-    name: Option<String>,
+    #[arg(short, long)]
+    projects_dir: Option<PathBuf>,
+
+    #[command(subcommand)]
+    command: Option<MukdukCommands>,
 
     #[clap(flatten)]
     verbosity: clap_verbosity_flag::Verbosity,
-
-    #[command(subcommand)]
-    command: Option<Commands>,
 }
 
 impl MukdukCli {
     fn handle_cmd(self) -> Result<()> {
         if let Some(cmd) = self.command {
-            Commands::handle_cmd(cmd)?;
+            MukdukCommands::handle_cmd(cmd, self.projects_dir)?;
         } else {
             eprintln!(
                 "\n{}\n",
@@ -40,7 +41,7 @@ impl MukdukCli {
 }
 
 #[derive(Subcommand)]
-enum Commands {
+enum MukdukCommands {
     #[clap(subcommand)]
     Project(ProjectSubcommand),
 }
@@ -48,6 +49,36 @@ enum Commands {
 #[derive(Subcommand)]
 enum ProjectSubcommand {
     Open(ProjectOpenArgs),
+}
+
+impl ProjectSubcommand {
+    fn handle_cmd(project_sub_cmd: ProjectSubcommand, projects_dir: Option<PathBuf>) -> Result<()> {
+        match project_sub_cmd {
+            ProjectSubcommand::Open(project_open_args) => {
+                let project = get_project(projects_dir, project_open_args.name)?;
+                match project_open_args.multiplexer {
+                    Multiplexer::Tmux => {
+                        log::info!(
+                            "opening {:?} session with project: {:?}!",
+                            project_open_args.multiplexer,
+                            project
+                        )
+                        // TODO: implement Command to create tmux session.
+                    }
+                    Multiplexer::Zellij => {
+                        log::info!(
+                            "opening {:?} session with project: {:?}!",
+                            project_open_args.multiplexer,
+                            project
+                        )
+                        // TODO: implement Command to create zellij session.
+                    }
+                }
+
+                Ok(())
+            }
+        }
+    }
 }
 
 #[derive(Args)]
@@ -71,48 +102,11 @@ enum Multiplexer {
     Zellij,
 }
 
-impl Commands {
-    fn handle_cmd(command: Commands) -> Result<()> {
-        match command {
-            Commands::Project(project_cmd) => {
-                match project_cmd {
-                    ProjectSubcommand::Open(project_open_args) => {
-                        let project: Project;
-                        if let Some(selected_project) = project_open_args.project_dir {
-                            project = Project {
-                                name: project_open_args.name.unwrap_or(
-                                    selected_project
-                                        .file_name()
-                                        .expect("file_name should be representable as a String.")
-                                        .to_string_lossy()
-                                        .to_string(),
-                                ),
-                                path: selected_project,
-                            }
-                        } else {
-                            project = pick_project()?;
-                        }
-
-                        match project_open_args.multiplexer {
-                            Multiplexer::Tmux => {
-                                log::debug!(
-                                    "opening {:?} session with project: {:?}!",
-                                    project_open_args.multiplexer,
-                                    project
-                                )
-                                // TODO: implement Command to create tmux session.
-                            }
-                            Multiplexer::Zellij => {
-                                log::debug!(
-                                    "opening {:?} session with project: {:?}!",
-                                    project_open_args.multiplexer,
-                                    project
-                                )
-                                // TODO: implement Command to create zellij session.
-                            }
-                        }
-                    }
-                }
+impl MukdukCommands {
+    fn handle_cmd(mukduk_command: MukdukCommands, projects_dir: Option<PathBuf>) -> Result<()> {
+        match mukduk_command {
+            MukdukCommands::Project(project_cmd) => {
+                ProjectSubcommand::handle_cmd(project_cmd, projects_dir)?;
             }
         }
         Ok(())
@@ -131,10 +125,30 @@ impl Display for Project {
     }
 }
 
-fn pick_project() -> Result<Project> {
-    let proj_dir: PathBuf = PathBuf::from(ConfigEnvKey::ProjDir);
+fn get_project(proj_dir: Option<PathBuf>, name: Option<String>) -> Result<Project> {
+    let project: Project;
+    if let Some(selected_project) = proj_dir {
+        project = Project {
+            name: name.unwrap_or(
+                selected_project
+                    .file_name()
+                    .expect("file_name should be representable as a String.")
+                    .to_string_lossy()
+                    .to_string(),
+            ),
+            path: selected_project,
+        }
+    } else {
+        project = pick_project(proj_dir)?;
+    }
 
-    log::debug!("Using project_dir: {:?}", &proj_dir);
+    Ok(project)
+}
+
+fn pick_project(projects_dir: Option<PathBuf>) -> Result<Project> {
+    let proj_dir: PathBuf = projects_dir.unwrap_or(PathBuf::from(ConfigEnvKey::ProjDir));
+
+    log::info!("Using project_dir: {:?}", &proj_dir);
 
     let projects = get_directories(proj_dir)?
         .iter()
@@ -152,7 +166,7 @@ fn pick_project() -> Result<Project> {
         .prompt()
         .unwrap();
 
-    log::debug!("selected: {}", project);
+    log::info!("selected: {}", project);
 
     Ok(project)
 }
