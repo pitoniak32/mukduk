@@ -1,46 +1,87 @@
 use anyhow::Result;
-use std::{env, fs, path::PathBuf, process::Command};
+use clap::{Parser, Subcommand};
+use colored::Colorize;
+use inquire::Select;
+use std::{env, fmt::Display, fs, path::PathBuf, process::Command};
 
 use crate::config::ConfigEnvKey;
 
 mod config;
+
+#[derive(Parser)]
+#[command(author, version, about)]
+/// Hi this is the short description.
+///
+/// This is the longer more details description of what this cli is used for.
+struct MukdukCli {
+    name: Option<String>,
+
+    #[clap(flatten)]
+    verbosity: clap_verbosity_flag::Verbosity,
+
+    #[command(subcommand)]
+    command: Option<Commands>,
+}
+
+impl MukdukCli {
+    fn handle_cmd(self) -> Result<()> {
+        if let Some(cmd) = self.command {
+            Commands::handle_cmd(cmd)?;
+        } else {
+            eprintln!(
+                "\n{}\n",
+                "No command was provided! To see commands use `--help`."
+                    .yellow()
+                    .bold()
+            );
+            std::process::exit(1);
+        }
+
+        Ok(())
+    }
+}
+
+#[derive(Subcommand)]
+enum Commands {
+    Project,
+}
+
+impl Commands {
+    fn handle_cmd(command: Commands) -> Result<()> {
+        match command {
+            Commands::Project => {
+                let proj_dir: PathBuf = PathBuf::from(ConfigEnvKey::ProjDir);
+                log::debug!("{:?}", &proj_dir);
+                let dirs = get_directories(proj_dir)?;
+
+                let dir = Select::new(
+                    &format!("Select your project:"),
+                    dirs.iter().map(|d| d.to_string_lossy()).collect(),
+                )
+                .prompt()
+                .unwrap();
+                log::info!("selected: {}", dir);
+            }
+        }
+        Ok(())
+    }
+}
 
 fn main() -> Result<()> {
     // let home_dir: PathBuf = PathBuf::from(ConfigEnvKey::Home);
     // let config_dir: PathBuf = PathBuf::from(ConfigEnvKey::XDGConfig);
     // let data_dir: PathBuf = PathBuf::from(ConfigEnvKey::XDGData);
     // let state_dir: PathBuf = PathBuf::from(ConfigEnvKey::XDGState);
-    let proj_dir: PathBuf = PathBuf::from(ConfigEnvKey::ProjDir);
-    let args: Vec<String> = env::args().collect();
+    let cli = MukdukCli::parse();
 
-    if args.get(1).is_some_and(|a| a == "true") {
-        let dirs = get_directories(proj_dir)?;
-        list_directories(dirs);
-    } else {
-        let mut user_input = String::new();
-        let stdin = std::io::stdin();
-        stdin.read_line(&mut user_input)?;
-        let user_input = user_input.trim();
-        println!("got: {}", user_input);
+    env_logger::builder()
+        .filter_level(cli.verbosity.log_level_filter())
+        .parse_default_env()
+        .init();
 
-        let result = Command::new("tmux")
-            .arg("new-session")
-            .arg("-Ads")
-            .arg(user_input)
-            .arg("-c")
-            .arg("~")
-            .spawn()
-            .unwrap();
-        dbg!(result);
-    }
+    cli.handle_cmd()?;
 
     Ok(())
-}
-
-fn list_directories(dirs: Vec<PathBuf>) {
-    for dir in dirs {
-        println!("{}", dir.file_name().unwrap().to_string_lossy());
-    }
 }
 
 fn get_directories(path: PathBuf) -> Result<Vec<PathBuf>> {
