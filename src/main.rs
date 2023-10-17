@@ -10,9 +10,7 @@ mod config;
 
 #[derive(Parser)]
 #[command(author, version, about)]
-/// Hi this is the short description.
-///
-/// This is the longer more details description of what this cli is used for.
+/// Manage your terminal environment.
 struct MukdukCli {
     name: Option<String>,
 
@@ -49,18 +47,26 @@ enum Commands {
 
 #[derive(Subcommand)]
 enum ProjectSubcommand {
-    Open(ProjectArgs),
+    Open(ProjectOpenArgs),
 }
 
-/// Doc comment
 #[derive(Args)]
-struct ProjectArgs {
+struct ProjectOpenArgs {
     #[arg(short, long)]
-    multiplexer: Multi,
+    /// Which multiplexer session should be created.
+    multiplexer: Multiplexer,
+
+    #[arg(short, long)]
+    /// Name of session, defaults to project_dir name
+    name: Option<String>,
+
+    #[arg(short, long)]
+    /// Name of session, defaults to project_dir name
+    project_dir: Option<PathBuf>,
 }
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, ValueEnum)]
-enum Multi {
+enum Multiplexer {
     Tmux,
     Zellij,
 }
@@ -71,10 +77,24 @@ impl Commands {
             Commands::Project(project_cmd) => {
                 match project_cmd {
                     ProjectSubcommand::Open(project_open_args) => {
-                        let project = pick_project()?;
+                        let project: Project;
+                        if let Some(selected_project) = project_open_args.project_dir {
+                            project = Project {
+                                name: project_open_args.name.unwrap_or(
+                                    selected_project
+                                        .file_name()
+                                        .expect("file_name should be representable as a String.")
+                                        .to_string_lossy()
+                                        .to_string(),
+                                ),
+                                path: selected_project,
+                            }
+                        } else {
+                            project = pick_project()?;
+                        }
 
                         match project_open_args.multiplexer {
-                            Multi::Tmux => {
+                            Multiplexer::Tmux => {
                                 log::debug!(
                                     "opening {:?} session with project: {:?}!",
                                     project_open_args.multiplexer,
@@ -82,7 +102,7 @@ impl Commands {
                                 )
                                 // TODO: implement Command to create tmux session.
                             }
-                            Multi::Zellij => {
+                            Multiplexer::Zellij => {
                                 log::debug!(
                                     "opening {:?} session with project: {:?}!",
                                     project_open_args.multiplexer,
