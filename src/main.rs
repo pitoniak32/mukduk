@@ -2,7 +2,7 @@ use anyhow::Result;
 use clap::{Args, Parser, Subcommand, ValueEnum};
 use colored::Colorize;
 use inquire::Select;
-use std::{fmt::Display, fs, path::PathBuf};
+use std::{fmt::Display, fs, path::PathBuf, process::Command};
 
 use crate::config::ConfigEnvKey;
 
@@ -62,7 +62,17 @@ impl ProjectSubcommand {
                             "opening {:?} session with project: {:?}!",
                             project_open_args.multiplexer,
                             project
-                        )
+                        );
+                        let child = Command::new("tmux")
+                            .args([
+                                "new-session",
+                                "-Ad",
+                                "-s",
+                                &project.name,
+                                "-c",
+                                project.path.to_str().unwrap_or_default(),
+                            ])
+                            .output();
                         // TODO: implement Command to create tmux session.
                     }
                     Multiplexer::Zellij => {
