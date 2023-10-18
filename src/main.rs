@@ -1,18 +1,19 @@
 use anyhow::Result;
-use clap::{Args, Parser, Subcommand, ValueEnum};
+use clap::{Args, Parser, Subcommand};
 use colored::Colorize;
 use inquire::Select;
-use std::{
-    env,
-    fmt::Display,
-    fs,
-    path::PathBuf,
-    process::{Command, ExitStatus},
-};
+use multiplexer::{Multiplexer, Multiplexers};
+use std::{fmt::Display, fs, path::PathBuf};
+use tmux::Tmux;
+use zellij::Zellij;
 
 use crate::config::ConfigEnvKey;
 
 mod config;
+mod multiplexer;
+
+mod tmux;
+mod zellij;
 
 #[derive(Parser)]
 #[command(author, version, about)]
@@ -54,193 +55,50 @@ enum MukdukCommands {
 
 #[derive(Subcommand)]
 enum ProjectSubcommand {
-    Create(ProjectCreateArgs),
-    Open(ProjectOpenArgs),
+    Create(ProjectArgs),
+    Open(ProjectArgs),
 }
 
 #[derive(Args, Debug)]
-struct ProjectCreateArgs {
+pub struct ProjectArgs {
     #[arg(short, long)]
     /// Which multiplexer session should be created.
-    multiplexer: Multiplexer,
+    pub multiplexer: Multiplexers,
 
     #[arg(short, long)]
     /// Name of session, defaults to project_dir name
-    name: Option<String>,
+    pub name: Option<String>,
 
     #[arg(short, long)]
     /// Name of session, defaults to project_dir name
-    project_dir: Option<PathBuf>,
-}
-
-#[derive(Args, Debug)]
-struct ProjectOpenArgs {
-    #[arg(short, long)]
-    /// Which multiplexer session should be opened.
-    multiplexer: Multiplexer,
-
-    #[arg(short, long)]
-    /// Name of session, defaults to project_dir name
-    name: Option<String>,
-
-    #[arg(short, long)]
-    /// Name of session, defaults to project_dir name
-    project_dir: Option<PathBuf>,
-}
-
-#[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, ValueEnum)]
-enum Multiplexer {
-    Tmux,
-    Zellij,
-}
-
-fn tmux_has_session(project_name: &str) -> bool {
-    match Command::new("tmux")
-        .args(["has-session", "-t", &format!("={}", project_name)])
-        .status()
-    {
-        Ok(status) => {
-            if status.success() {
-                true
-            } else {
-                false
-            }
-        }
-        Err(_) => false,
-    }
-}
-
-fn not_in_tmux() -> bool {
-    match env::var("TMUX") {
-        Ok(_) => false,
-        Err(_) => true,
-    }
+    pub project_dir: Option<PathBuf>,
 }
 
 impl ProjectSubcommand {
     fn handle_cmd(project_sub_cmd: ProjectSubcommand, projects_dir: Option<PathBuf>) -> Result<()> {
         match project_sub_cmd {
-            ProjectSubcommand::Create(create_args) => {
-                let project = get_project(
-                    projects_dir,
-                    &create_args.project_dir,
-                    create_args.name.clone(),
-                )?;
-                ProjectSubcommand::handle_create_cmd(&create_args, project)?;
+            ProjectSubcommand::Create(proj_args) => {
+                let project =
+                    get_project(projects_dir, &proj_args.project_dir, proj_args.name.clone())?;
+                ProjectSubcommand::handle_create_cmd(&proj_args, project)?;
                 Ok(())
             }
-            ProjectSubcommand::Open(open_args) => {
+            ProjectSubcommand::Open(proj_args) => {
                 let project =
-                    get_project(projects_dir, &open_args.project_dir, open_args.name.clone())?;
-                ProjectSubcommand::handle_open_cmd(&open_args, project)?;
+                    get_project(projects_dir, &proj_args.project_dir, proj_args.name.clone())?;
+                ProjectSubcommand::handle_open_cmd(&proj_args, project)?;
                 Ok(())
             }
         }
     }
 
-    fn handle_create_cmd(create_args: &ProjectCreateArgs, project: Project) -> Result<()> {
-        match create_args.multiplexer {
-            Multiplexer::Tmux => {
-                log::info!(
-                    "creating {:?} session with project: {:?}!",
-                    create_args.multiplexer,
-                    project
-                );
-
-                // TODO: implement Command to create tmux session.
-                let output = Command::new("tmux")
-                    .args([
-                        "new-session",
-                        "-Ad",
-                        "-s",
-                        &project.name,
-                        "-c",
-                        project.path.to_str().unwrap_or_default(),
-                    ])
-                    .status()?;
-
-                if output.success() {
-                    println!(
-                        "Session '{}' has been created in '{}'.",
-                        project.name,
-                        project.path.to_string_lossy()
-                    );
-                } else {
-                    eprintln!("Session failed to be created with exit_code: {}", output);
-                }
-            }
-            Multiplexer::Zellij => {
-                log::info!(
-                    "creating {:?} session with project: {:?}!",
-                    create_args.multiplexer,
-                    project
-                );
-                todo!("not implemented");
-                // TODO: implement Command to create zellij session.
-            }
-        }
+    fn handle_create_cmd(proj_args: &ProjectArgs, project: Project) -> Result<()> {
+        proj_args.multiplexer.create(proj_args, project)?;
         Ok(())
     }
 
-    fn handle_open_cmd(open_args: &ProjectOpenArgs, project: Project) -> Result<()> {
-        match open_args.multiplexer {
-            Multiplexer::Tmux => {
-                log::info!(
-                    "opening {:?} session with project: {:?}!",
-                    open_args.multiplexer,
-                    project
-                );
-
-                let output: ExitStatus;
-                if not_in_tmux() {
-                    let output = Command::new("tmux")
-                        .args([
-                            "new-session",
-                            "-Ad",
-                            "-s",
-                            &project.name,
-                            "-c",
-                            project.path.to_str().unwrap_or_default(),
-                        ])
-                        .status()?;
-                } else {
-                    if tmux_has_session(&project.name) {
-                        println!("Session '{}' already exists, opening.", project.name);
-                        let _child = Command::new("tmux")
-                            .args(["switch-client", "-t", &project.name])
-                            .status()?;
-                    } else {
-                        println!(
-                            "Session '{}' does not already exist, creating and opening.",
-                            project.name
-                        );
-                        output = Command::new("tmux")
-                            .args([
-                                "new-session",
-                                "-A",
-                                "-s",
-                                &project.name,
-                                "-c",
-                                project.path.to_str().unwrap_or_default(),
-                            ])
-                            .status()?;
-                        if output.success() {
-                            println!("Session '{}' has been opened.", project.name);
-                        } else {
-                            eprintln!("Session failed to be opened with exit_code: {}", output);
-                        }
-                    }
-                }
-            }
-            Multiplexer::Zellij => {
-                log::info!(
-                    "opening {:?} session with project: {:?}!",
-                    open_args.multiplexer,
-                    project
-                )
-                // TODO: implement Command to open zellij session.
-            }
-        }
+    fn handle_open_cmd(proj_args: &ProjectArgs, project: Project) -> Result<()> {
+        proj_args.multiplexer.open(proj_args, project)?;
         Ok(())
     }
 }
@@ -257,9 +115,9 @@ impl MukdukCommands {
 }
 
 #[derive(Debug)]
-struct Project {
-    path: PathBuf,
-    name: String,
+pub struct Project {
+    pub path: PathBuf,
+    pub name: String,
 }
 
 impl Display for Project {

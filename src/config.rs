@@ -1,7 +1,7 @@
 use std::{env, path::PathBuf};
 
 /// # Use this for reading config from Environment Variables
-/// The goal with this enum is to provide a way to access typed configuration from Environement
+/// The goal with this enum is to provide a way to access typed configuration from Environment
 /// variables.
 ///
 /// This will allow the type to be validated before it is used by the program.
@@ -112,7 +112,7 @@ impl From<ConfigEnvKey> for PathBuf {
             ConfigEnvKey::ProjDir => PathBuf::from(
                 env::var(ConfigEnvKey::ProjDir.as_str()).expect("PROJ_DIR env var should be set"),
             ),
-            _ => panic!("this key cannot be converted to String. {DEFAULT_PANIC_MSG}"),
+            _ => panic!("this key cannot be converted to PathBuf. {DEFAULT_PANIC_MSG}"),
         }
     }
 }
