@@ -53,7 +53,7 @@ impl Tmux {
             let _output = Command::new("tmux")
                 .args([
                     "new-session",
-                    "-Ad",
+                    "-A",
                     "-s",
                     &project.name,
                     "-c",

@@ -1,4 +1,10 @@
-Will be used for managing local terminal development environment.
+## "R" is among the most menacing of sounds - Dwight K. Shrute.
+
+Project management in your terminal should not be menacing.
+
+pronounced - [muck duck]
+
+---
 
 To list project directories under `PROJ_DIR` env var, and have the user select the project. Then open a multiplexer session with selected project.
 ```bash

@@ -33,11 +33,16 @@ impl Zellij {
             proj_args.multiplexer,
             project
         );
-        // Will attach to an existing session, or create a new one if one does not exist.
-        Command::new("zellij")
-            .args(["attach", "-c", &project.name])
-            .current_dir(project.path.to_str().unwrap_or_default())
-            .status()?;
+        if Zellij::not_in() {
+            // Will attach to an existing session, or create a new one if one does not exist.
+            Command::new("zellij")
+                .args(["attach", "-c", &project.name])
+                .current_dir(project.path.to_str().unwrap_or_default())
+                .status()?;
+        } else {
+            eprintln!("{}", "\nZellij does not currently have support for switching sessions while inside an active session.\n\nTry detaching from your current session, and try again.\n".yellow().bold())
+        }
+
 
         Ok(())
     }
