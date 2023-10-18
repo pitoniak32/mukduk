@@ -53,6 +53,7 @@ impl Zellij {
         let output = Command::new("zellij").arg("ls").output()?;
         match output.status.success() {
             true => {
+                assert_ne!(project_name, "", "Zellij session name cannot be empty. The sessions list will contain \"\" due to split('\n').");
                 if String::from_utf8_lossy(&output.stdout)
                     .split('\n')
                     .any(|session_name| session_name == project_name)
