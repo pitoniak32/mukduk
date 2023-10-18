@@ -1,3 +1,4 @@
+use anyhow::Result;
 use colored::Colorize;
 use std::{env, process::Command};
 
@@ -43,21 +44,33 @@ impl Zellij {
 }
 
 impl Zellij {
-    fn has_session(project_name: &str) -> bool {
-        todo!();
-        // match Command::new("zellij")
-        //     .args([""])
-        //     .status()
-        // {
-        //     Ok(status) => {
-        //         if status.success() {
-        //             true
-        //         } else {
-        //             false
-        //         }
-        //     }
-        //     Err(_) => false,
-        // }
+    #[allow(dead_code)]
+    fn has_session(project_name: &str) -> Result<bool> {
+        let output = Command::new("zellij").arg("ls").output()?;
+        match output.status.success() {
+            true => {
+                if String::from_utf8_lossy(&output.stdout)
+                    .split("\n")
+                    .any(|session_name| session_name == project_name)
+                {
+                    return Ok(true);
+                }
+                Ok(false)
+            }
+            false => {
+                let error_msg = String::from_utf8_lossy(&output.stderr);
+                if error_msg.contains("No active zellij sessions found.") {
+                    Ok(false)
+                } else {
+                    eprintln!(
+                        "zellij command failed with exit code: {}, and error msg: {}\n",
+                        output.status,
+                        String::from_utf8_lossy(&output.stderr)
+                    );
+                    panic!("The command 'zellij ls' should not fail unless zellij is not present on the machine.")
+                }
+            }
+        }
     }
 
     fn not_in() -> bool {
