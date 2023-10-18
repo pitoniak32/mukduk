@@ -4,8 +4,8 @@ use colored::Colorize;
 use inquire::Select;
 use multiplexer::{Multiplexer, Multiplexers};
 use std::{fmt::Display, fs, path::PathBuf};
-use tmux::Tmux;
-use zellij::Zellij;
+
+
 
 use crate::config::ConfigEnvKey;
 
@@ -167,7 +167,7 @@ fn pick_project(projects_dir: Option<PathBuf>) -> Result<Project> {
         })
         .collect();
 
-    let project = Select::new(&format!("Select your project:"), projects)
+    let project = Select::new("Select your project:", projects)
         .prompt()
         .unwrap();
 

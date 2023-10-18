@@ -60,32 +60,30 @@ impl Tmux {
                     project.path.to_str().unwrap_or_default(),
                 ])
                 .status()?;
+        } else if Tmux::has_session(&project.name) {
+            println!("Session '{}' already exists, opening.", project.name);
+            let _child = Command::new("tmux")
+                .args(["switch-client", "-t", &project.name])
+                .status()?;
         } else {
-            if Tmux::has_session(&project.name) {
-                println!("Session '{}' already exists, opening.", project.name);
-                let _child = Command::new("tmux")
-                    .args(["switch-client", "-t", &project.name])
-                    .status()?;
+            println!(
+                "Session '{}' does not already exist, creating and opening.",
+                project.name
+            );
+            output = Command::new("tmux")
+                .args([
+                    "new-session",
+                    "-A",
+                    "-s",
+                    &project.name,
+                    "-c",
+                    project.path.to_str().unwrap_or_default(),
+                ])
+                .status()?;
+            if output.success() {
+                println!("Session '{}' has been opened.", project.name);
             } else {
-                println!(
-                    "Session '{}' does not already exist, creating and opening.",
-                    project.name
-                );
-                output = Command::new("tmux")
-                    .args([
-                        "new-session",
-                        "-A",
-                        "-s",
-                        &project.name,
-                        "-c",
-                        project.path.to_str().unwrap_or_default(),
-                    ])
-                    .status()?;
-                if output.success() {
-                    println!("Session '{}' has been opened.", project.name);
-                } else {
-                    eprintln!("Session failed to be opened with exit_code: {}", output);
-                }
+                eprintln!("Session failed to be opened with exit_code: {}", output);
             }
         }
 
@@ -100,20 +98,13 @@ impl Tmux {
             .status()
         {
             Ok(status) => {
-                if status.success() {
-                    true
-                } else {
-                    false
-                }
+                status.success()
             }
             Err(_) => false,
         }
     }
 
     fn not_in() -> bool {
-        match env::var("TMUX") {
-            Ok(_) => false,
-            Err(_) => true,
-        }
+        env::var("TMUX").is_err()
     }
 }

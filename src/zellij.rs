@@ -50,7 +50,7 @@ impl Zellij {
         match output.status.success() {
             true => {
                 if String::from_utf8_lossy(&output.stdout)
-                    .split("\n")
+                    .split('\n')
                     .any(|session_name| session_name == project_name)
                 {
                     return Ok(true);
@@ -74,9 +74,6 @@ impl Zellij {
     }
 
     fn not_in() -> bool {
-        match env::var("ZELLIJ") {
-            Ok(_) => false,
-            Err(_) => true,
-        }
+        env::var("ZELLIJ").is_err()
     }
 }
