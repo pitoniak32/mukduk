@@ -3,7 +3,13 @@ use clap::{Args, Parser, Subcommand};
 use colored::Colorize;
 use inquire::Select;
 use multiplexer::{Multiplexer, Multiplexers};
-use std::{fmt::Display, fs, path::PathBuf};
+use std::{
+    error,
+    fmt::Display,
+    fs,
+    path::PathBuf,
+    process::{Command, Stdio},
+};
 
 use crate::config::ConfigEnvKey;
 
@@ -111,7 +117,7 @@ impl MukdukCommands {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Project {
     pub path: PathBuf,
     pub name: String,
@@ -152,7 +158,7 @@ fn pick_project(projects_dir: Option<PathBuf>) -> Result<Project> {
 
     log::info!("Using project_dir: {:?}", &proj_dir);
 
-    let projects = get_directories(proj_dir)?
+    let projects: Vec<_> = get_directories(proj_dir)?
         .iter()
         .map(|d| Project {
             path: d.to_path_buf(),
@@ -163,14 +169,39 @@ fn pick_project(projects_dir: Option<PathBuf>) -> Result<Project> {
                 .to_string(),
         })
         .collect();
+    let project_name = fzf_get_project_name(
+        projects
+            .iter()
+            .map(|p| p.name.clone())
+            .collect::<Vec<_>>()
+            .join("\n"),
+    )?;
 
-    let project = Select::new("Select your project:", projects)
-        .prompt()
-        .unwrap();
+    if project_name == "" {
+        eprintln!("\n{}\n", "No project was selected.".red().bold());
+        std::process::exit(1);
+    }
+    dbg!(&project_name);
+    Ok(projects.iter().find(|p| p.name == project_name).expect("This should never be None since the project_names list only contains names from the list of projects. If the user does not choose from the list the program will exit.").clone())
+}
 
-    log::info!("selected: {}", project);
-
-    Ok(project)
+fn fzf_get_project_name(project_names: String) -> Result<String> {
+    let echo_child = Command::new("echo")
+        .arg(project_names)
+        .stdout(Stdio::piped())
+        .spawn()?;
+    if let Some(echo_stdout) = echo_child.stdout {
+        let fzf_child = Command::new("fzf")
+            .stdin(echo_stdout)
+            .stdout(Stdio::piped())
+            .spawn()?
+            .wait_with_output()?;
+        let selected_name = String::from_utf8_lossy(&fzf_child.stdout)
+            .trim()
+            .to_string();
+        return Ok(selected_name);
+    }
+    Ok("".to_string())
 }
 
 fn main() -> Result<()> {

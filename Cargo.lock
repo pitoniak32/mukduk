@@ -325,6 +325,7 @@ dependencies = [
  "inquire",
  "log",
  "pretty_assertions",
+ "thiserror",
 ]
 
 [[package]]

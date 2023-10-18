@@ -47,7 +47,6 @@ impl Tmux {
             proj_args.multiplexer,
             project
         );
-
         let output: ExitStatus;
         if Tmux::not_in() {
             let _output = Command::new("tmux")
@@ -66,6 +65,7 @@ impl Tmux {
                 .args(["switch-client", "-t", &project.name])
                 .status()?;
         } else {
+            todo!("allow new tmux sessions to be created while already in one");
             println!(
                 "Session '{}' does not already exist, creating and opening.",
                 project.name
