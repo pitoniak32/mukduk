@@ -43,7 +43,6 @@ impl Zellij {
             eprintln!("{}", "\nZellij does not currently have support for switching sessions while inside an active session.\n\nTry detaching from your current session, and try again.\n".yellow().bold())
         }
 
-
         Ok(())
     }
 }

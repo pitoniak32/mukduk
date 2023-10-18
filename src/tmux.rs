@@ -97,9 +97,7 @@ impl Tmux {
             .args(["has-session", "-t", &format!("={}", project_name)])
             .status()
         {
-            Ok(status) => {
-                status.success()
-            }
+            Ok(status) => status.success(),
             Err(_) => false,
         }
     }

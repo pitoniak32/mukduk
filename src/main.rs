@@ -5,8 +5,6 @@ use inquire::Select;
 use multiplexer::{Multiplexer, Multiplexers};
 use std::{fmt::Display, fs, path::PathBuf};
 
-
-
 use crate::config::ConfigEnvKey;
 
 mod config;
@@ -106,11 +104,10 @@ impl ProjectSubcommand {
 impl MukdukCommands {
     fn handle_cmd(mukduk_command: MukdukCommands, projects_dir: Option<PathBuf>) -> Result<()> {
         match mukduk_command {
-            MukdukCommands::Project(project_cmd) => {
-                ProjectSubcommand::handle_cmd(project_cmd, projects_dir)?;
+            MukdukCommands::Project(project_sub_cmd) => {
+                ProjectSubcommand::handle_cmd(project_sub_cmd, projects_dir)
             }
         }
-        Ok(())
     }
 }
 
@@ -205,12 +202,12 @@ fn get_directories(path: PathBuf) -> Result<Vec<PathBuf>> {
                     }
                 }
                 Err(err) => {
-                    println!("An error occurred, skipping entry: {err}");
+                    eprintln!("An error occurred, skipping entry: {err}");
                     None
                 }
             },
             Err(err) => {
-                println!("An error occurred, skipping entry: {err}");
+                eprintln!("An error occurred, skipping entry: {err}");
                 None
             }
         })
