@@ -2,7 +2,13 @@ use anyhow::Result;
 use clap::{Args, Parser, Subcommand, ValueEnum};
 use colored::Colorize;
 use inquire::Select;
-use std::{fmt::Display, fs, path::PathBuf, process::Command};
+use std::{
+    env,
+    fmt::Display,
+    fs,
+    path::PathBuf,
+    process::{Command, ExitStatus},
+};
 
 use crate::config::ConfigEnvKey;
 
@@ -48,53 +54,29 @@ enum MukdukCommands {
 
 #[derive(Subcommand)]
 enum ProjectSubcommand {
+    Create(ProjectCreateArgs),
     Open(ProjectOpenArgs),
 }
 
-impl ProjectSubcommand {
-    fn handle_cmd(project_sub_cmd: ProjectSubcommand, projects_dir: Option<PathBuf>) -> Result<()> {
-        match project_sub_cmd {
-            ProjectSubcommand::Open(project_open_args) => {
-                let project = get_project(projects_dir, project_open_args.name)?;
-                match project_open_args.multiplexer {
-                    Multiplexer::Tmux => {
-                        log::info!(
-                            "opening {:?} session with project: {:?}!",
-                            project_open_args.multiplexer,
-                            project
-                        );
-                        let child = Command::new("tmux")
-                            .args([
-                                "new-session",
-                                "-Ad",
-                                "-s",
-                                &project.name,
-                                "-c",
-                                project.path.to_str().unwrap_or_default(),
-                            ])
-                            .output();
-                        // TODO: implement Command to create tmux session.
-                    }
-                    Multiplexer::Zellij => {
-                        log::info!(
-                            "opening {:?} session with project: {:?}!",
-                            project_open_args.multiplexer,
-                            project
-                        )
-                        // TODO: implement Command to create zellij session.
-                    }
-                }
-
-                Ok(())
-            }
-        }
-    }
-}
-
-#[derive(Args)]
-struct ProjectOpenArgs {
+#[derive(Args, Debug)]
+struct ProjectCreateArgs {
     #[arg(short, long)]
     /// Which multiplexer session should be created.
+    multiplexer: Multiplexer,
+
+    #[arg(short, long)]
+    /// Name of session, defaults to project_dir name
+    name: Option<String>,
+
+    #[arg(short, long)]
+    /// Name of session, defaults to project_dir name
+    project_dir: Option<PathBuf>,
+}
+
+#[derive(Args, Debug)]
+struct ProjectOpenArgs {
+    #[arg(short, long)]
+    /// Which multiplexer session should be opened.
     multiplexer: Multiplexer,
 
     #[arg(short, long)]
@@ -110,6 +92,157 @@ struct ProjectOpenArgs {
 enum Multiplexer {
     Tmux,
     Zellij,
+}
+
+fn tmux_has_session(project_name: &str) -> bool {
+    match Command::new("tmux")
+        .args(["has-session", "-t", &format!("={}", project_name)])
+        .status()
+    {
+        Ok(status) => {
+            if status.success() {
+                true
+            } else {
+                false
+            }
+        }
+        Err(_) => false,
+    }
+}
+
+fn not_in_tmux() -> bool {
+    match env::var("TMUX") {
+        Ok(_) => false,
+        Err(_) => true,
+    }
+}
+
+impl ProjectSubcommand {
+    fn handle_cmd(project_sub_cmd: ProjectSubcommand, projects_dir: Option<PathBuf>) -> Result<()> {
+        match project_sub_cmd {
+            ProjectSubcommand::Create(create_args) => {
+                let project = get_project(
+                    projects_dir,
+                    &create_args.project_dir,
+                    create_args.name.clone(),
+                )?;
+                ProjectSubcommand::handle_create_cmd(&create_args, project)?;
+                Ok(())
+            }
+            ProjectSubcommand::Open(open_args) => {
+                let project =
+                    get_project(projects_dir, &open_args.project_dir, open_args.name.clone())?;
+                ProjectSubcommand::handle_open_cmd(&open_args, project)?;
+                Ok(())
+            }
+        }
+    }
+
+    fn handle_create_cmd(create_args: &ProjectCreateArgs, project: Project) -> Result<()> {
+        match create_args.multiplexer {
+            Multiplexer::Tmux => {
+                log::info!(
+                    "creating {:?} session with project: {:?}!",
+                    create_args.multiplexer,
+                    project
+                );
+
+                // TODO: implement Command to create tmux session.
+                let output = Command::new("tmux")
+                    .args([
+                        "new-session",
+                        "-Ad",
+                        "-s",
+                        &project.name,
+                        "-c",
+                        project.path.to_str().unwrap_or_default(),
+                    ])
+                    .status()?;
+
+                if output.success() {
+                    println!(
+                        "Session '{}' has been created in '{}'.",
+                        project.name,
+                        project.path.to_string_lossy()
+                    );
+                } else {
+                    eprintln!("Session failed to be created with exit_code: {}", output);
+                }
+            }
+            Multiplexer::Zellij => {
+                log::info!(
+                    "creating {:?} session with project: {:?}!",
+                    create_args.multiplexer,
+                    project
+                );
+                todo!("not implemented");
+                // TODO: implement Command to create zellij session.
+            }
+        }
+        Ok(())
+    }
+
+    fn handle_open_cmd(open_args: &ProjectOpenArgs, project: Project) -> Result<()> {
+        match open_args.multiplexer {
+            Multiplexer::Tmux => {
+                log::info!(
+                    "opening {:?} session with project: {:?}!",
+                    open_args.multiplexer,
+                    project
+                );
+
+                let output: ExitStatus;
+                if not_in_tmux() {
+                    let output = Command::new("tmux")
+                        .args([
+                            "new-session",
+                            "-Ad",
+                            "-s",
+                            &project.name,
+                            "-c",
+                            project.path.to_str().unwrap_or_default(),
+                        ])
+                        .status()?;
+                } else {
+                    if tmux_has_session(&project.name) {
+                        println!("Session '{}' already exists, opening.", project.name);
+                        let _child = Command::new("tmux")
+                            .args(["switch-client", "-t", &project.name])
+                            .status()?;
+                    } else {
+                        println!(
+                            "Session '{}' does not already exist, creating and opening.",
+                            project.name
+                        );
+                        output = Command::new("tmux")
+                            .args([
+                                "new-session",
+                                "-A",
+                                "-s",
+                                &project.name,
+                                "-c",
+                                project.path.to_str().unwrap_or_default(),
+                            ])
+                            .status()?;
+                        if output.success() {
+                            println!("Session '{}' has been opened.", project.name);
+                        } else {
+                            eprintln!("Session failed to be opened with exit_code: {}", output);
+                        }
+                    }
+                }
+            }
+            Multiplexer::Zellij => {
+                log::info!(
+                    "opening {:?} session with project: {:?}!",
+                    open_args.multiplexer,
+                    project
+                )
+                // TODO: implement Command to open zellij session.
+            }
+        }
+        Ok(())
+    }
 }
 
 impl MukdukCommands {
@@ -135,9 +268,13 @@ impl Display for Project {
     }
 }
 
-fn get_project(proj_dir: Option<PathBuf>, name: Option<String>) -> Result<Project> {
+fn get_project(
+    projects_dir: Option<PathBuf>,
+    project_dir: &Option<PathBuf>,
+    name: Option<String>,
+) -> Result<Project> {
     let project: Project;
-    if let Some(selected_project) = proj_dir {
+    if let Some(selected_project) = project_dir {
         project = Project {
             name: name.unwrap_or(
                 selected_project
@@ -146,10 +283,10 @@ fn get_project(proj_dir: Option<PathBuf>, name: Option<String>) -> Result<Projec
                     .to_string_lossy()
                     .to_string(),
             ),
-            path: selected_project,
+            path: selected_project.clone(),
         }
     } else {
-        project = pick_project(proj_dir)?;
+        project = pick_project(projects_dir)?;
     }
 
     Ok(project)
