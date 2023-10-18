@@ -112,6 +112,7 @@ impl From<ConfigEnvKey> for PathBuf {
             ConfigEnvKey::ProjDir => PathBuf::from(
                 env::var(ConfigEnvKey::ProjDir.as_str()).expect("PROJ_DIR env var should be set"),
             ),
+            #[allow(unreachable_patterns)] // This is allowed because not all enum variants are guaranteed to be this type here.
             _ => panic!("this key cannot be converted to PathBuf. {DEFAULT_PANIC_MSG}"),
         }
     }

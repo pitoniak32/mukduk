@@ -44,7 +44,7 @@ impl Zellij {
 }
 
 impl Zellij {
-    #[allow(dead_code)]
+    #[allow(dead_code)] // This will likely be needed eventually.
     fn has_session(project_name: &str) -> Result<bool> {
         let output = Command::new("zellij").arg("ls").output()?;
         match output.status.success() {
