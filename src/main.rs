@@ -1,10 +1,9 @@
 use anyhow::Result;
 use clap::{Args, Parser, Subcommand};
 use colored::Colorize;
-use inquire::Select;
+
 use multiplexer::{Multiplexer, Multiplexers};
 use std::{
-    error,
     fmt::Display,
     fs,
     path::PathBuf,
@@ -14,6 +13,7 @@ use std::{
 use crate::config::ConfigEnvKey;
 
 mod config;
+mod helper;
 mod multiplexer;
 
 mod tmux;
@@ -170,21 +170,21 @@ fn pick_project(projects_dir: Option<PathBuf>) -> Result<Project> {
         })
         .collect();
     let project_name = fzf_get_project_name(
-        projects
+        &projects
             .iter()
             .map(|p| p.name.clone())
             .collect::<Vec<_>>()
             .join("\n"),
     )?;
 
-    if project_name == "" {
+    if project_name.is_empty() {
         eprintln!("\n{}\n", "No project was selected.".red().bold());
         std::process::exit(1);
     }
     Ok(projects.iter().find(|p| p.name == project_name).expect("This should never be None since the project_names list only contains names from the list of projects. If the user does not choose from the list the program will exit.").clone())
 }
 
-fn fzf_get_project_name(project_names: String) -> Result<String> {
+fn fzf_get_project_name(project_names: &str) -> Result<String> {
     let echo_child = Command::new("echo")
         .arg(project_names)
         .stdout(Stdio::piped())

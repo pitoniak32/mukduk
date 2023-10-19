@@ -2,7 +2,7 @@ use anyhow::Result;
 use colored::Colorize;
 use std::{env, process::Command};
 
-use crate::{Project, ProjectArgs};
+use crate::{helper::wrap_command, Project, ProjectArgs};
 
 pub struct Zellij;
 
@@ -16,10 +16,11 @@ impl Zellij {
 
         if Zellij::not_in() {
             // Will attach to an existing session, or create a new one if one does not exist.
-            Command::new("zellij")
-                .args(["attach", "-c", &project.name])
-                .current_dir(project.path.to_str().unwrap_or_default())
-                .status()?;
+            wrap_command(
+                Command::new("zellij")
+                    .args(["attach", "-c", &project.name])
+                    .current_dir(project.path.to_str().unwrap_or_default()),
+            )?;
         } else {
             eprintln!("{}", "\nZellij does not currently have support for switching sessions while inside an active session.\n\nTry detaching from your current session, and try again.\n".yellow().bold())
         }
