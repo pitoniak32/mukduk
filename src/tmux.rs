@@ -1,7 +1,7 @@
 use anyhow::Result;
 use std::{
     env,
-    process::{Command, ExitStatus},
+    process::{Command, ExitStatus, Stdio},
 };
 
 use crate::{Project, ProjectArgs};
@@ -16,7 +16,6 @@ impl Tmux {
             project
         );
 
-        // TODO: implement Command to create tmux session.
         let output = Command::new("tmux")
             .args([
                 "new-session",
@@ -29,7 +28,7 @@ impl Tmux {
             .status()?;
 
         if output.success() {
-            println!(
+            log::info!(
                 "Session '{}' has been created in '{}'.",
                 project.name,
                 project.path.to_string_lossy()
@@ -60,30 +59,36 @@ impl Tmux {
                 ])
                 .status()?;
         } else if Tmux::has_session(&project.name) {
-            println!("Session '{}' already exists, opening.", project.name);
+            log::info!("Session '{}' already exists, opening.", project.name);
             let _child = Command::new("tmux")
                 .args(["switch-client", "-t", &project.name])
                 .status()?;
         } else {
-            todo!("allow new tmux sessions to be created while already in one");
-            println!(
+            log::info!(
                 "Session '{}' does not already exist, creating and opening.",
                 project.name
             );
-            output = Command::new("tmux")
+
+            let output_tmux = Command::new("tmux")
+                .stdout(Stdio::piped())
                 .args([
                     "new-session",
-                    "-A",
+                    "-d",
                     "-s",
                     &project.name,
                     "-c",
                     project.path.to_str().unwrap_or_default(),
                 ])
-                .status()?;
-            if output.success() {
-                println!("Session '{}' has been opened.", project.name);
+                .spawn()?.wait_with_output()?;
+
+            if output_tmux.status.success() {
+                log::info!("{}", String::from_utf8_lossy(&output_tmux.stdout));
+                let output = Command::new("tmux")
+                    .args(["switch-client", "-t", &project.name])
+                    .stdout(Stdio::piped())
+                    .spawn()?.wait_with_output()?;
             } else {
-                eprintln!("Session failed to be opened with exit_code: {}", output);
+                eprintln!("Session failed to be opened with exit_code: {:?}", output_tmux.status.code());
             }
         }
 
@@ -93,11 +98,29 @@ impl Tmux {
 
 impl Tmux {
     fn has_session(project_name: &str) -> bool {
+        log::info!("has-session");
         match Command::new("tmux")
             .args(["has-session", "-t", &format!("={}", project_name)])
-            .status()
+            .stdout(Stdio::piped())
+            .stderr(Stdio::piped())
+            .spawn()
         {
-            Ok(status) => status.success(),
+            Ok(output) => {
+                match output.wait_with_output() {
+                    Ok(wout) => {
+                        if wout.status.success() {
+                            log::info!("{}", String::from_utf8_lossy(&wout.stdout).trim());
+                            true
+                        } else {
+                            log::warn!("{}", String::from_utf8_lossy(&wout.stderr).trim());
+                            false
+                        }
+                    },
+                    Err(_) => {
+                        false
+                    },
+                }
+            }, 
             Err(_) => false,
         }
     }

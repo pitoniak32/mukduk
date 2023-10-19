@@ -181,7 +181,6 @@ fn pick_project(projects_dir: Option<PathBuf>) -> Result<Project> {
         eprintln!("\n{}\n", "No project was selected.".red().bold());
         std::process::exit(1);
     }
-    dbg!(&project_name);
     Ok(projects.iter().find(|p| p.name == project_name).expect("This should never be None since the project_names list only contains names from the list of projects. If the user does not choose from the list the program will exit.").clone())
 }
 
