@@ -1,3 +1,4 @@
+[![mukduk:latest](https://github.com/pitoniak32/mukduk/actions/workflows/release.yml/badge.svg)](https://github.com/pitoniak32/mukduk/actions/workflows/release.yml)
 ## "R" is among the most menacing of sounds - Dwight K. Shrute.
 
 Project management in your terminal should not be menacing.
