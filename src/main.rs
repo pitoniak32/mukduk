@@ -2,6 +2,8 @@ use anyhow::Result;
 use clap::{Args, Parser, Subcommand};
 use colored::Colorize;
 
+use self_update::cargo_crate_version;
+
 use multiplexer::{Multiplexer, Multiplexers};
 use std::{
     fmt::Display,
@@ -55,6 +57,8 @@ impl MukdukCli {
 enum MukdukCommands {
     #[clap(subcommand)]
     Project(ProjectSubcommand),
+
+    Update,
 }
 
 #[derive(Subcommand)]
@@ -112,7 +116,8 @@ impl MukdukCommands {
         match mukduk_command {
             MukdukCommands::Project(project_sub_cmd) => {
                 ProjectSubcommand::handle_cmd(project_sub_cmd, projects_dir)
-            }
+            },
+            MukdukCommands::Update => update(),
         }
     }
 }
@@ -217,6 +222,19 @@ fn main() -> Result<()> {
 
     cli.handle_cmd()?;
 
+    Ok(())
+}
+
+fn update() -> Result<()> {
+    let status = self_update::backends::github::Update::configure()
+        .repo_owner("pitoniak32")
+        .repo_name("mukduk")
+        .bin_name("mukduk")
+        .show_download_progress(true)
+        .current_version(cargo_crate_version!())
+        .build()?
+        .update()?;
+    println!("Update status: `{}`!", status.version());
     Ok(())
 }
 
