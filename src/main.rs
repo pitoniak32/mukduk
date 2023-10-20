@@ -234,7 +234,7 @@ fn update() -> Result<()> {
         .current_version(cargo_crate_version!())
         .build()?
         .update()?;
-    println!("Update status: `{}`!", status.version());
+    println!("Update status: {}!", status.version());
     Ok(())
 }
 
