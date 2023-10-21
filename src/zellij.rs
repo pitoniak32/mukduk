@@ -1,13 +1,17 @@
 use anyhow::Result;
 use colored::Colorize;
-use std::{env, process::Command};
+use std::{
+    env,
+    path::Path,
+    process::{Command, Output},
+};
 
 use crate::{helper::wrap_command, Project, ProjectArgs};
 
 pub struct Zellij;
 
 impl Zellij {
-    pub fn create(proj_args: &ProjectArgs, project: Project) -> anyhow::Result<()> {
+    pub fn open(proj_args: &ProjectArgs, project: Project) -> Result<()> {
         log::info!(
             "creating {:?} session with project: {:?}!",
             proj_args.multiplexer,
@@ -15,31 +19,7 @@ impl Zellij {
         );
 
         if Zellij::not_in() {
-            // Will attach to an existing session, or create a new one if one does not exist.
-            wrap_command(
-                Command::new("zellij")
-                    .args(["attach", "-c", &project.name])
-                    .current_dir(project.path.to_str().unwrap_or_default()),
-            )?;
-        } else {
-            eprintln!("{}", "\nZellij does not currently have support for switching sessions while inside an active session.\n\nTry detaching from your current session, and try again.\n".yellow().bold())
-        }
-
-        Ok(())
-    }
-
-    pub fn open(proj_args: &ProjectArgs, project: Project) -> anyhow::Result<()> {
-        log::info!(
-            "opening {:?} session with project: {:?}!",
-            proj_args.multiplexer,
-            project
-        );
-        if Zellij::not_in() {
-            // Will attach to an existing session, or create a new one if one does not exist.
-            Command::new("zellij")
-                .args(["attach", "-c", &project.name])
-                .current_dir(project.path.to_str().unwrap_or_default())
-                .status()?;
+            Zellij::create_attached(&project.name, &project.path)?;
         } else {
             eprintln!("{}", "\nZellij does not currently have support for switching sessions while inside an active session.\n\nTry detaching from your current session, and try again.\n".yellow().bold())
         }
@@ -49,9 +29,20 @@ impl Zellij {
 }
 
 impl Zellij {
+    fn create_attached(name: &str, path: &Path) -> Result<Output> {
+        wrap_command(
+            Command::new("zellij")
+                .args(["a", "-c", name])
+                .current_dir(path.to_str().unwrap_or_default()),
+        )
+    }
+
     #[allow(dead_code)] // This will likely be needed eventually.
-    fn has_session(project_name: &str) -> Result<bool> {
-        let output = Command::new("zellij").arg("ls").output()?;
+    fn has_session(project_name: &str) -> bool {
+        let output = Command::new("zellij")
+            .arg("ls")
+            .output()
+            .expect("zellij was not able to print list of sessions.");
         match output.status.success() {
             true => {
                 assert_ne!(project_name, "", "Zellij session name cannot be empty. The sessions list will contain \"\" due to split('\n').");
@@ -59,14 +50,14 @@ impl Zellij {
                     .split('\n')
                     .any(|session_name| session_name == project_name)
                 {
-                    return Ok(true);
+                    return true;
                 }
-                Ok(false)
+                false
             }
             false => {
                 let error_msg = String::from_utf8_lossy(&output.stderr);
                 if error_msg.contains("No active zellij sessions found.") {
-                    Ok(false)
+                    false
                 } else {
                     eprintln!(
                         "zellij command failed with exit code: {}, and error msg: {}\n",

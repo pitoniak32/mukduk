@@ -2,7 +2,8 @@ use anyhow::Result;
 use colored::Colorize;
 use std::{
     env,
-    process::Command,
+    path::Path,
+    process::{Command, Output},
 };
 
 use crate::{helper::wrap_command, Project, ProjectArgs};
@@ -10,70 +11,27 @@ use crate::{helper::wrap_command, Project, ProjectArgs};
 pub struct Tmux;
 
 impl Tmux {
-    pub fn create(proj_args: &ProjectArgs, project: Project) -> Result<()> {
-        log::info!(
-            "creating {:?} session with project: {:?}!",
-            proj_args.multiplexer,
-            project
-        );
-
-        let output = wrap_command(Command::new("tmux").args([
-            "new-session",
-            "-Ad",
-            "-s",
-            &project.name,
-            "-c",
-            project.path.to_str().unwrap_or_default(),
-        ]))?;
-
-        if output.status.success() {
-            log::info!(
-                "Session '{}' has been created in '{}'.",
-                project.name,
-                project.path.to_string_lossy()
-            );
-        } else {
-            eprintln!("{}", "Session failed to be created.".red().bold());
-        }
-
-        Ok(())
-    }
-
     pub fn open(proj_args: &ProjectArgs, project: Project) -> Result<()> {
         log::info!(
-            "opening {:?} session with project: {:?}!",
+            "attempting to open {:?} session with project: {:?}!",
             proj_args.multiplexer,
             project
         );
         if Tmux::not_in() {
-            wrap_command(Command::new("tmux").args([
-                "new-session",
-                "-A",
-                "-s",
-                &project.name,
-                "-c",
-                project.path.to_str().unwrap_or_default(),
-            ]))?;
+            Tmux::create_new_attached_attach_if_exists(&project.name, &project.path)?;
         } else if Tmux::has_session(&project.name) {
             log::info!("Session '{}' already exists, opening.", project.name);
-            wrap_command(Command::new("tmux").args(["switch-client", "-t", &project.name]))?;
+            Tmux::switch(&project.name)?;
         } else {
             log::info!(
                 "Session '{}' does not already exist, creating and opening.",
                 project.name
             );
 
-            let output_tmux = wrap_command(Command::new("tmux").args([
-                "new-session",
-                "-d",
-                "-s",
-                &project.name,
-                "-c",
-                project.path.to_str().unwrap_or_default(),
-            ]));
-
-            if output_tmux.is_ok_and(|o| o.status.success()) {
-                wrap_command(Command::new("tmux").args(["switch-client", "-t", &project.name]))?;
+            if Tmux::create_new_detached(&project.name, &project.path)
+                .is_ok_and(|o| o.status.success())
+            {
+                Tmux::switch(&project.name)?;
             } else {
                 eprintln!("{}", "Session failed to open.".red().bold());
             }
@@ -84,6 +42,44 @@ impl Tmux {
 }
 
 impl Tmux {
+    #[allow(dead_code)] // This will likely be needed eventually.
+    fn create_new_detached_attach_if_exists(name: &str, path: &Path) -> Result<Output> {
+        wrap_command(Command::new("tmux").args([
+            "new-session",
+            "-Ad",
+            "-s",
+            name,
+            "-c",
+            path.to_str().unwrap_or_default(),
+        ]))
+    }
+
+    fn create_new_attached_attach_if_exists(name: &str, path: &Path) -> Result<Output> {
+        wrap_command(Command::new("tmux").args([
+            "new-session",
+            "-A",
+            "-s",
+            name,
+            "-c",
+            path.to_str().unwrap_or_default(),
+        ]))
+    }
+
+    fn create_new_detached(name: &str, path: &Path) -> Result<Output> {
+        wrap_command(Command::new("tmux").args([
+            "new-session",
+            "-d",
+            "-s",
+            name,
+            "-c",
+            path.to_str().unwrap_or_default(),
+        ]))
+    }
+
+    fn switch(to_name: &str) -> Result<Output> {
+        wrap_command(Command::new("tmux").args(["switch-client", "-t", to_name]))
+    }
+
     fn has_session(project_name: &str) -> bool {
         let output = wrap_command(Command::new("tmux").args([
             "has-session",
