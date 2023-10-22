@@ -5,7 +5,13 @@ use colored::Colorize;
 use config::ConfigEnvKey;
 use helper::{fzf_get_sessions, get_project};
 use multiplexer::{Multiplexer, Multiplexers};
-use std::{fmt::Display, path::PathBuf};
+use serde::{Deserialize, Serialize};
+use std::{
+    fmt::Display,
+    fs::{self, File},
+    path::PathBuf,
+    process,
+};
 
 mod config;
 mod helper;
@@ -15,16 +21,7 @@ mod tmux;
 mod zellij;
 
 fn main() -> Result<()> {
-    // let home_dir: PathBuf = PathBuf::from(ConfigEnvKey::Home);
-    // let config_dir: PathBuf = PathBuf::from(ConfigEnvKey::XDGConfig);
-    // let data_dir: PathBuf = PathBuf::from(ConfigEnvKey::XDGData);
-    // let state_dir: PathBuf = PathBuf::from(ConfigEnvKey::XDGState);
-    let cli = MukdukCli::parse();
-
-    env_logger::builder()
-        .filter_level(cli.verbosity.log_level_filter())
-        .parse_default_env()
-        .init();
+    let cli = MukdukCli::init()?;
 
     cli.handle_cmd()?;
 
@@ -35,14 +32,100 @@ fn main() -> Result<()> {
 #[command(author, version, about)]
 /// Manage your terminal environment.
 struct MukdukCli {
-    #[arg(short, long)]
-    projects_dir: Option<PathBuf>,
+    #[clap(skip)]
+    context: MukdukContext,
+
+    #[clap(flatten)]
+    args: SharedArgs,
 
     #[command(subcommand)]
     command: Option<MukdukCommands>,
+}
+
+impl MukdukCli {
+    fn init() -> Result<Self> {
+        // let home_dir: PathBuf = PathBuf::from(ConfigEnvKey::Home);
+        // let config_dir: PathBuf = PathBuf::from(ConfigEnvKey::XDGConfig);
+        // let data_dir: PathBuf = PathBuf::from(ConfigEnvKey::XDGData);
+        // let state_dir: PathBuf = PathBuf::from(ConfigEnvKey::XDGState);
+        let mut cli = MukdukCli::parse();
+        env_logger::builder()
+            .filter_level(cli.args.verbosity.log_level_filter())
+            .parse_default_env()
+            .init();
+
+        cli.set_config_path()?;
+        cli.read_config()?;
+
+        log::debug!("{:#?}", &cli.args);
+        log::debug!("{:#?}", &cli.context);
+
+        Ok(cli)
+    }
+
+    fn set_config_path(&mut self) -> Result<()> {
+        if let Some(config_path) = &self.args.config_path {
+            if !config_path.exists() {
+                eprintln!(
+                    "\n{}\n",
+                    "Provided config path does not exist.".red().bold()
+                );
+                process::exit(1);
+            }
+        } else {
+            let mut path = PathBuf::from(ConfigEnvKey::XDGConfig);
+            if path.exists() {
+                path.push("mukduk");
+                if !path.exists() {
+                    fs::create_dir(&path)?;
+                }
+                path.push("config.yml");
+                if !path.exists() {
+                    File::create(&path)?;
+                }
+            } else {
+                let mut path = PathBuf::from(ConfigEnvKey::Home);
+                if path.exists() {
+                    path.push(".mukdukrc.yml");
+                    if !path.exists() {
+                        File::create(&path)?;
+                    }
+                }
+            }
+            self.args.config_path = Some(path.clone());
+            self.context.config_path = path.clone();
+        }
+        Ok(())
+    }
+
+    fn read_config(&mut self) -> Result<()> {
+        self.context.config =
+            serde_yaml::from_str(&fs::read_to_string(&self.context.config_path)?)?;
+        Ok(())
+    }
+}
+
+#[derive(Args, Debug)]
+struct SharedArgs {
+    #[arg(short, long)]
+    projects_dir: Option<PathBuf>,
+
+    #[arg(short, long)]
+    config_path: Option<PathBuf>,
 
     #[clap(flatten)]
     verbosity: clap_verbosity_flag::Verbosity,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone, Default)]
+struct MukdukContext {
+    config_path: PathBuf,
+    config: MukdukConfig,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone, Default)]
+struct MukdukConfig {
+    project_dirs: Vec<PathBuf>,
 }
 
 #[derive(Subcommand)]
@@ -80,7 +163,7 @@ pub struct ProjectArgs {
 impl MukdukCli {
     fn handle_cmd(self) -> Result<()> {
         if let Some(cmd) = self.command {
-            MukdukCommands::handle_cmd(cmd, self.projects_dir)?;
+            MukdukCommands::handle_cmd(cmd, self.args.projects_dir)?;
         } else {
             eprintln!(
                 "\n{}\n",
