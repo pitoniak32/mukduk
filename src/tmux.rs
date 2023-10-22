@@ -39,6 +39,30 @@ impl Tmux {
 
         Ok(())
     }
+
+    pub fn list_sessions() -> Vec<String> {
+        String::from_utf8_lossy(
+            &wrap_command(Command::new("tmux").arg("ls"))
+                .expect("tmux should be able to list sessions")
+                .stdout,
+        )
+        .trim_end()
+        .split('\n')
+        .map(|s| s.split(':').collect::<Vec<_>>()[0].to_string())
+        .filter(|s| !s.is_empty())
+        .collect()
+    }
+
+    pub fn kill_sessions(sessions: &[String]) -> Result<()> {
+        sessions.iter().for_each(|s| {
+            if Tmux::kill_session(s).is_ok() {
+                log::info!("killed {}", s)
+            } else {
+                log::error!("error while killing {}", s)
+            }
+        });
+        Ok(())
+    }
 }
 
 impl Tmux {
@@ -88,6 +112,15 @@ impl Tmux {
         ]));
 
         output.is_ok_and(|o| o.status.success())
+    }
+
+    fn kill_session(project_name: &str) -> Result<()> {
+        wrap_command(Command::new("tmux").args([
+            "kill-session",
+            "-t",
+            &format!("={}", project_name),
+        ]))?;
+        Ok(())
     }
 
     fn not_in() -> bool {

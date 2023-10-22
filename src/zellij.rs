@@ -26,6 +26,30 @@ impl Zellij {
 
         Ok(())
     }
+
+    pub fn list_sessions() -> Vec<String> {
+        String::from_utf8_lossy(
+            &wrap_command(Command::new("zellij").arg("ls"))
+                .expect("zellij should be able to list sessions")
+                .stdout,
+        )
+        .trim_end()
+        .split('\n')
+        .map(|s| s.to_string())
+        .filter(|s| !s.is_empty())
+        .collect()
+    }
+
+    pub fn kill_sessions(sessions: &[String]) -> Result<()> {
+        sessions.iter().for_each(|s| {
+            if Zellij::kill_session(s).is_ok() {
+                log::info!("killed {}", s)
+            } else {
+                log::error!("error while killing {}", s)
+            }
+        });
+        Ok(())
+    }
 }
 
 impl Zellij {
@@ -68,6 +92,11 @@ impl Zellij {
                 }
             }
         }
+    }
+
+    fn kill_session(project_name: &str) -> Result<()> {
+        wrap_command(Command::new("zellij").args(["kill-session", project_name]))?;
+        Ok(())
     }
 
     fn not_in() -> bool {

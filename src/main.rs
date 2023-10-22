@@ -3,7 +3,7 @@ use clap::{Args, Parser, Subcommand};
 use colored::Colorize;
 
 use config::ConfigEnvKey;
-use helper::get_project;
+use helper::{fzf_get_sessions, get_project};
 use multiplexer::{Multiplexer, Multiplexers};
 use std::{fmt::Display, path::PathBuf};
 
@@ -58,6 +58,8 @@ enum ProjectSubcommand {
     Open(ProjectArgs),
     /// Open a scratch session. defaults: (name = scratch, path = $HOME)
     Scratch(ProjectArgs),
+    /// Kill sessions.
+    Kill(ProjectArgs),
 }
 
 #[derive(Args, Debug)]
@@ -123,6 +125,12 @@ impl ProjectSubcommand {
                             .unwrap_or(PathBuf::from(ConfigEnvKey::Home)),
                     },
                 )?;
+                Ok(())
+            }
+            ProjectSubcommand::Kill(proj_args) => {
+                let sessions = proj_args.multiplexer.get_sessions();
+                let picked_sessions = fzf_get_sessions(sessions)?;
+                proj_args.multiplexer.kill_sessions(picked_sessions)?;
                 Ok(())
             }
         }

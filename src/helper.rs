@@ -100,6 +100,37 @@ pub fn fzf_get_project_name(project_names: &str) -> Result<String> {
     Ok("".to_string())
 }
 
+pub fn fzf_get_sessions(session_names: Vec<String>) -> Result<Vec<String>> {
+    if session_names.is_empty() {
+        eprintln!("\n{}\n", "No sessions found to choose from.".blue().bold());
+        std::process::exit(0);
+    }
+    let echo_child = Command::new("echo")
+        .arg(session_names.join("\n"))
+        .stdout(Stdio::piped())
+        .spawn()?;
+    if let Some(echo_stdout) = echo_child.stdout {
+        let fzf_child = Command::new("fzf")
+            .args(["--phony", "--multi"])
+            .stdin(echo_stdout)
+            .stdout(Stdio::piped())
+            .spawn()?
+            .wait_with_output()?;
+
+        if fzf_child.status.success() {
+            let selected_names: Vec<_> = String::from_utf8_lossy(&fzf_child.stdout)
+                .trim_end()
+                .split('\n')
+                .map(|s| s.to_string())
+                .collect();
+            return Ok(selected_names);
+        } else {
+            return Ok(vec![]);
+        }
+    }
+    Ok(vec![])
+}
+
 pub fn get_directories(path: PathBuf) -> Result<Vec<PathBuf>> {
     Ok(fs::read_dir(path)?
         .filter_map(|dir| match dir {
