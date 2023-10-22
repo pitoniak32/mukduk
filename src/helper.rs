@@ -6,7 +6,6 @@ use std::{
 
 use anyhow::Result;
 use colored::Colorize;
-use self_update::cargo_crate_version;
 
 use crate::{config::ConfigEnvKey, Project};
 
@@ -99,19 +98,6 @@ pub fn fzf_get_project_name(project_names: &str) -> Result<String> {
         return Ok(selected_name);
     }
     Ok("".to_string())
-}
-
-pub fn update() -> Result<()> {
-    let status = self_update::backends::github::Update::configure()
-        .repo_owner("pitoniak32")
-        .repo_name("mukduk")
-        .bin_name("mukduk")
-        .show_download_progress(true)
-        .current_version(cargo_crate_version!())
-        .build()?
-        .update()?;
-    println!("Update status: {}!", status.version());
-    Ok(())
 }
 
 pub fn get_directories(path: PathBuf) -> Result<Vec<PathBuf>> {

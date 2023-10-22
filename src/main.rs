@@ -3,7 +3,7 @@ use clap::{Args, Parser, Subcommand};
 use colored::Colorize;
 
 use config::ConfigEnvKey;
-use helper::{get_project, update};
+use helper::get_project;
 use multiplexer::{Multiplexer, Multiplexers};
 use std::{fmt::Display, path::PathBuf};
 
@@ -50,8 +50,6 @@ enum MukdukCommands {
     #[clap(subcommand)]
     /// Commands for dealing with projects.
     Project(ProjectSubcommand),
-    /// Self-update command to get newer versions.
-    Update,
 }
 
 #[derive(Subcommand)]
@@ -101,7 +99,6 @@ impl MukdukCommands {
             MukdukCommands::Project(project_sub_cmd) => {
                 ProjectSubcommand::handle_cmd(project_sub_cmd, projects_dir)
             }
-            MukdukCommands::Update => update(),
         }
     }
 }
