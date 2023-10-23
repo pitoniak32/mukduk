@@ -108,16 +108,16 @@ impl MukdukCli {
 #[derive(Args, Debug)]
 struct SharedArgs {
     #[arg(long, env)]
-    projects_dir: Option<PathBuf>,
-    
+    projects_dir: PathBuf,
+
     /// Override '$XDG_CONFIG_HOME/config.yml' or '$HOME/.mukdukrc.yml' defaults.
     #[arg(short, long)]
     config_path: Option<PathBuf>,
-    
+
     /// Allow interactive choice of project dirs listed in config file.
     #[arg(short, long)]
     pick_projects_dir: bool,
-    
+
     #[clap(flatten)]
     verbosity: clap_verbosity_flag::Verbosity,
 }
@@ -184,7 +184,7 @@ impl MukdukCli {
 }
 
 impl MukdukCommands {
-    fn handle_cmd(mukduk_command: MukdukCommands, projects_dir: Option<PathBuf>) -> Result<()> {
+    fn handle_cmd(mukduk_command: MukdukCommands, projects_dir: PathBuf) -> Result<()> {
         match mukduk_command {
             MukdukCommands::Project(project_sub_cmd) => {
                 ProjectSubcommand::handle_cmd(project_sub_cmd, projects_dir)
@@ -194,7 +194,7 @@ impl MukdukCommands {
 }
 
 impl ProjectSubcommand {
-    fn handle_cmd(project_sub_cmd: ProjectSubcommand, projects_dir: Option<PathBuf>) -> Result<()> {
+    fn handle_cmd(project_sub_cmd: ProjectSubcommand, projects_dir: PathBuf) -> Result<()> {
         match project_sub_cmd {
             ProjectSubcommand::Open(proj_args) => {
                 let project =

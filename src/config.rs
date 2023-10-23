@@ -51,7 +51,6 @@ pub enum ConfigEnvKey {
     XDGConfig,
     XDGData,
     XDGState,
-    ProjDir,
 }
 
 impl ConfigEnvKey {
@@ -61,7 +60,6 @@ impl ConfigEnvKey {
             ConfigEnvKey::XDGConfig => "XDG_CONFIG_HOME",
             ConfigEnvKey::XDGData => "XDG_DATA_HOME",
             ConfigEnvKey::XDGState => "XDG_STATE_HOME",
-            ConfigEnvKey::ProjDir => "PROJECTS_DIR",
         }
     }
 
@@ -71,7 +69,6 @@ impl ConfigEnvKey {
             ConfigEnvKey::XDGConfig => "",
             ConfigEnvKey::XDGData => "",
             ConfigEnvKey::XDGState => "",
-            ConfigEnvKey::ProjDir => "",
         }
     }
 }
@@ -109,11 +106,9 @@ impl From<ConfigEnvKey> for PathBuf {
                 env::var(ConfigEnvKey::XDGState.as_str())
                     .expect("XDG_STATE_HOME env var should be set"),
             ),
-            ConfigEnvKey::ProjDir => PathBuf::from(
-                env::var(ConfigEnvKey::ProjDir.as_str()).expect("PROJ_DIR env var should be set"),
-            ),
             #[allow(unreachable_patterns)]
-            // This is allowed because not all enum variants are guaranteed to be this type here.
+            // This is allowed because not all enum variants are guaranteed to be this type in the
+            // futrue.
             _ => panic!("this key cannot be converted to PathBuf. {DEFAULT_PANIC_MSG}"),
         }
     }

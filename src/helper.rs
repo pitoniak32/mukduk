@@ -7,7 +7,7 @@ use std::{
 use anyhow::Result;
 use colored::Colorize;
 
-use crate::{config::ConfigEnvKey, Project};
+use crate::Project;
 
 pub fn wrap_command(command: &mut Command) -> Result<Output> {
     let output = command
@@ -27,7 +27,7 @@ pub fn wrap_command(command: &mut Command) -> Result<Output> {
 }
 
 pub fn get_project(
-    projects_dir: Option<PathBuf>,
+    projects_dir: PathBuf,
     project_dir: &Option<PathBuf>,
     name: Option<String>,
 ) -> Result<Project> {
@@ -50,9 +50,7 @@ pub fn get_project(
     Ok(project)
 }
 
-pub fn pick_project(projects_dir: Option<PathBuf>) -> Result<Project> {
-    let proj_dir: PathBuf = projects_dir.unwrap_or(PathBuf::from(ConfigEnvKey::ProjDir));
-
+pub fn pick_project(proj_dir: PathBuf) -> Result<Project> {
     log::info!("Using project_dir: {:?}", &proj_dir);
 
     let projects: Vec<_> = get_directories(proj_dir)?
