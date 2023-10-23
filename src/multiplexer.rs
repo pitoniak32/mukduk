@@ -7,6 +7,7 @@ pub trait Multiplexer {
     fn open(self, proj_args: &ProjectArgs, project: Project) -> Result<()>;
     fn get_sessions(self) -> Vec<String>;
     fn kill_sessions(self, sessions: Vec<String>) -> Result<()>;
+    fn unique_session(self) -> Result<()>;
 }
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, ValueEnum)]
@@ -39,6 +40,13 @@ impl Multiplexer for Multiplexers {
         match self {
             Multiplexers::Tmux => Tmux::kill_sessions(&sessions),
             Multiplexers::Zellij => Zellij::kill_sessions(&sessions),
+        }
+    }
+
+    fn unique_session(self) -> Result<()> {
+        match self {
+            Multiplexers::Tmux => Tmux::unique_session(),
+            Multiplexers::Zellij => todo!(),
         }
     }
 }

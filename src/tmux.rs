@@ -2,11 +2,11 @@ use anyhow::Result;
 use colored::Colorize;
 use std::{
     env,
-    path::Path,
+    path::{Path, PathBuf},
     process::{Command, Output},
 };
 
-use crate::{helper::wrap_command, Project, ProjectArgs};
+use crate::{config::ConfigEnvKey, helper::wrap_command, Project, ProjectArgs};
 
 pub struct Tmux;
 
@@ -61,6 +61,23 @@ impl Tmux {
                 log::error!("error while killing {}", s)
             }
         });
+        Ok(())
+    }
+
+    pub fn unique_session() -> Result<()> {
+        for i in 0..10 {
+            let name = &i.to_string();
+            if !Tmux::has_session(name) {
+                if Tmux::create_new_detached(name, &PathBuf::from(ConfigEnvKey::Home))
+                    .is_ok_and(|o| o.status.success())
+                {
+                    Tmux::switch(name)?;
+                    break;
+                } else {
+                    eprintln!("{}", "Session failed to open.".red().bold());
+                }
+            }
+        }
         Ok(())
     }
 }

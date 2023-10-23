@@ -150,6 +150,10 @@ enum ProjectSubcommand {
     Scratch(ProjectArgs),
     /// Kill sessions.
     Kill(ProjectArgs),
+    /// Open new unique session in $HOME and increment prefix (available: 0-9).
+    Home(ProjectArgs),
+    // Like ThePrimagen Harpoon in nvim but for multiplexer sessions
+    // Harpoon(ProjectArgs),
 }
 
 #[derive(Args, Debug)]
@@ -223,6 +227,7 @@ impl ProjectSubcommand {
                 proj_args.multiplexer.kill_sessions(picked_sessions)?;
                 Ok(())
             }
+            ProjectSubcommand::Home(proj_args) => proj_args.multiplexer.unique_session(),
         }
     }
 }
