@@ -13,11 +13,12 @@ pub struct Tmux;
 impl Tmux {
     pub fn open(proj_args: &ProjectArgs, project: Project) -> Result<()> {
         log::info!(
-            "attempting to open {:?} session with project: {:?}!",
+            "Attempting to open {:?} session with project: {:?}!",
             proj_args.multiplexer,
             project
         );
-        if Tmux::not_in() {
+
+        if !Tmux::in_session() {
             Tmux::create_new_attached_attach_if_exists(&project.name, &project.path)?;
         } else if Tmux::has_session(&project.name) {
             log::info!("Session '{}' already exists, opening.", project.name);
@@ -56,9 +57,9 @@ impl Tmux {
     pub fn kill_sessions(sessions: &[String]) -> Result<()> {
         sessions.iter().for_each(|s| {
             if Tmux::kill_session(s).is_ok() {
-                log::info!("killed {}", s)
+                log::info!("Killed {}.", s)
             } else {
-                log::error!("error while killing {}", s)
+                log::error!("Error while killing {}.", s)
             }
         });
         Ok(())
@@ -140,7 +141,7 @@ impl Tmux {
         Ok(())
     }
 
-    fn not_in() -> bool {
-        env::var("TMUX").is_err()
+    fn in_session() -> bool {
+        env::var("TMUX").is_ok()
     }
 }
