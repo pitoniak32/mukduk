@@ -61,7 +61,7 @@ impl ConfigEnvKey {
             ConfigEnvKey::XDGConfig => "XDG_CONFIG_HOME",
             ConfigEnvKey::XDGData => "XDG_DATA_HOME",
             ConfigEnvKey::XDGState => "XDG_STATE_HOME",
-            ConfigEnvKey::ProjDir => "PROJ_DIR",
+            ConfigEnvKey::ProjDir => "PROJECTS_DIR",
         }
     }
 

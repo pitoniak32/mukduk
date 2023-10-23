@@ -107,12 +107,17 @@ impl MukdukCli {
 
 #[derive(Args, Debug)]
 struct SharedArgs {
-    #[arg(short, long)]
+    #[arg(long, env)]
     projects_dir: Option<PathBuf>,
-
+    
+    /// Override '$XDG_CONFIG_HOME/config.yml' or '$HOME/.mukdukrc.yml' defaults.
     #[arg(short, long)]
     config_path: Option<PathBuf>,
-
+    
+    /// Allow interactive choice of project dirs listed in config file.
+    #[arg(short, long)]
+    pick_projects_dir: bool,
+    
     #[clap(flatten)]
     verbosity: clap_verbosity_flag::Verbosity,
 }
@@ -131,7 +136,7 @@ struct MukdukConfig {
 #[derive(Subcommand)]
 enum MukdukCommands {
     #[clap(subcommand)]
-    /// Commands for dealing with projects.
+    /// Commands for managing projects.
     Project(ProjectSubcommand),
 }
 
