@@ -99,8 +99,10 @@ impl MukdukCli {
     }
 
     fn read_config(&mut self) -> Result<()> {
+        log::debug!("loading config...");
         self.context.config =
             serde_yaml::from_str(&fs::read_to_string(&self.context.config_path)?)?;
+        log::debug!("config loaded!");
         Ok(())
     }
 }
@@ -130,7 +132,7 @@ struct MukdukContext {
 
 #[derive(Serialize, Deserialize, Debug, Clone, Default)]
 struct MukdukConfig {
-    project_dirs: Vec<PathBuf>,
+    project_dirs: Option<Vec<PathBuf>>,
 }
 
 #[derive(Subcommand)]
