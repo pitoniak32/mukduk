@@ -61,7 +61,7 @@ pub fn pick_project(proj_dir: PathBuf) -> Result<Project> {
                 .file_name()
                 .expect("file_name should be representable as a String")
                 .to_string_lossy()
-                .to_string(),
+                .to_string().replace(".", "_"),
         })
         .collect();
     let project_name = fzf_get_project_name(
