@@ -5,7 +5,7 @@ Project management in your terminal should not be menacing.
 
 pronounced - [muck duck]
 
-## Dependencies
+## Cli Tooling External Dependencies
 - [fzf](https://github.com/junegunn/fzf): used for the picker menus.
 - [tmux](https://github.com/tmux/tmux)   (optional): required if you want to use tmux.
 - [zellij](https://github.com/zellij-org/zellij) (optional): requried only if you want to use zellij.
@@ -30,3 +30,9 @@ OR you can specify a specific project to use.
 ```bash
 mukduk project open -m tmux -p /absolute/path/to/project/dir -n name-other-than-dir-name
 ```
+
+## Goal List
+- add harpoon functionality
+- add popup scratch terminal functionality
+    - per session
+    - global
