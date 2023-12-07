@@ -17,6 +17,7 @@ mod config;
 mod helper;
 mod multiplexer;
 
+mod fzf;
 mod tmux;
 mod zellij;
 
@@ -223,6 +224,7 @@ impl ProjectSubcommand {
             }
             ProjectSubcommand::Kill(proj_args) => {
                 let sessions = proj_args.multiplexer.get_sessions();
+                log::debug!("sessions: {sessions:?}");
                 let picked_sessions = fzf_get_sessions(sessions)?;
                 proj_args.multiplexer.kill_sessions(picked_sessions)?;
                 Ok(())

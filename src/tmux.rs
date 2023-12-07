@@ -57,7 +57,11 @@ impl Tmux {
     pub fn kill_sessions(sessions: &[String]) -> Result<()> {
         sessions.iter().for_each(|s| {
             if Tmux::kill_session(s).is_ok() {
-                log::info!("Killed {}.", s)
+                if s.is_empty() {
+                    log::warn!("No session picked");
+                } else {
+                    log::info!("Killed {}.", s);
+                }
             } else {
                 log::error!("Error while killing {}.", s)
             }
