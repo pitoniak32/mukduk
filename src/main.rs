@@ -3,6 +3,7 @@ use clap::{Args, Parser, Subcommand};
 use colored::Colorize;
 
 use config::ConfigEnvKey;
+use fzf::FzfCmd;
 use helper::{fzf_get_sessions, get_project};
 use multiplexer::{Multiplexer, Multiplexers};
 use serde::{Deserialize, Serialize};
@@ -10,7 +11,7 @@ use std::{
     fmt::Display,
     fs::{self, File},
     path::PathBuf,
-    process,
+    process, env,
 };
 
 mod config;
@@ -66,12 +67,17 @@ impl MukdukCli {
 
     fn set_config_path(&mut self) -> Result<()> {
         if let Some(config_path) = &self.args.config_path {
-            if !config_path.exists() {
-                eprintln!(
-                    "\n{}\n",
-                    "Provided config path does not exist.".red().bold()
-                );
-                process::exit(1);
+            if let Ok(curr) = std::fs::canonicalize(config_path) {
+                log::debug!("checking {}", curr.to_string_lossy());
+                if !curr.exists() {
+                    eprintln!(
+                        "\n{}\n",
+                        "Provided config path does not exist.".red().bold()
+                    );
+                    process::exit(1);
+                }
+                self.args.config_path = Some(curr.clone());
+                self.context.config_path = curr.clone();
             }
         } else {
             let mut path = PathBuf::from(ConfigEnvKey::XDGConfig);
@@ -100,10 +106,12 @@ impl MukdukCli {
     }
 
     fn read_config(&mut self) -> Result<()> {
-        log::debug!("loading config...");
+        let config_path = &self.context.config_path;
+        log::trace!("loading config from {}...", config_path.to_string_lossy());
         self.context.config =
-            serde_yaml::from_str(&fs::read_to_string(&self.context.config_path)?)?;
-        log::debug!("config loaded!");
+            serde_yaml::from_str(&fs::read_to_string(config_path)?)?;
+        log::trace!("config: {:#?}", self.context.config);
+        log::trace!("config loaded!");
         Ok(())
     }
 }
@@ -133,7 +141,7 @@ struct MukdukContext {
 
 #[derive(Serialize, Deserialize, Debug, Clone, Default)]
 struct MukdukConfig {
-    project_dirs: Option<Vec<PathBuf>>,
+    projects: Option<Vec<PathBuf>>,
 }
 
 #[derive(Subcommand)]
@@ -175,7 +183,25 @@ pub struct ProjectArgs {
 impl MukdukCli {
     fn handle_cmd(self) -> Result<()> {
         if let Some(cmd) = self.command {
-            MukdukCommands::handle_cmd(cmd, self.args.projects_dir)?;
+            let mut projects_dir = self.args.projects_dir;
+            if self.args.pick_projects_dir {
+                log::trace!("user picking project dir...");
+                if let Some(dirs) = self.context.config.projects {
+                    let string_dir_names: Vec<String> = dirs.iter().map(|d| d.to_string_lossy().to_string()).collect();
+                    let selected = PathBuf::from(FzfCmd::new().find_vec(string_dir_names)?);
+                    log::trace!("expanding project dir selection: [{}]", selected.to_string_lossy());
+                    match std::fs::canonicalize(selected) {
+                        Ok(curr) => {
+                            log::trace!("user picked [{}] as project dir.", projects_dir.to_string_lossy());
+                            projects_dir = curr
+                        },
+                        Err(err) => {
+                            log::trace!("failed expanding project dir selection. using default of [{}]: {err}", projects_dir.to_string_lossy());
+                        },
+                    }
+                }
+            }
+            MukdukCommands::handle_cmd(cmd, projects_dir)?;
         } else {
             eprintln!(
                 "\n{}\n",
