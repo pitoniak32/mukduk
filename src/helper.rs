@@ -32,16 +32,16 @@ pub fn get_project(
     name: Option<String>,
 ) -> Result<Project> {
     if let Some(selected_project) = project_dir {
-        Ok(Project {
-            name: name.unwrap_or(
+        Ok(Project::new(
+            selected_project.clone(),
+            name.unwrap_or(
                 selected_project
                     .file_name()
                     .expect("selected project should have a valid file / dir name.")
                     .to_string_lossy()
                     .to_string(),
             ),
-            path: selected_project.clone(),
-        })
+        ))
     } else {
         pick_project(projects_dir)
     }
@@ -52,14 +52,14 @@ pub fn pick_project(proj_dir: PathBuf) -> Result<Project> {
 
     let projects: Vec<_> = get_directories(proj_dir)?
         .iter()
-        .map(|d| Project {
-            path: d.to_path_buf(),
-            name: d
-                .file_name()
-                .expect("file_name should be representable as a String")
-                .to_string_lossy()
-                .to_string()
-                .replace('.', "_"),
+        .map(|d| {
+            Project::new(
+                d.to_path_buf(),
+                d.file_name()
+                    .expect("file_name should be representable as a String")
+                    .to_string_lossy()
+                    .to_string(),
+            )
         })
         .collect();
 

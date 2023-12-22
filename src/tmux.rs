@@ -15,24 +15,24 @@ impl Tmux {
         log::info!(
             "Attempting to open {:?} session with project: {:?}!",
             proj_args.multiplexer,
-            project
+            project,
         );
 
         if !Tmux::in_session() {
-            Tmux::create_new_attached_attach_if_exists(&project.name, &project.path)?;
-        } else if Tmux::has_session(&project.name) {
-            log::info!("Session '{}' already exists, opening.", project.name);
-            Tmux::switch(&project.name)?;
+            Tmux::create_new_attached_attach_if_exists(&project.get_name(), &project.get_path())?;
+        } else if Tmux::has_session(&project.get_name()) {
+            log::info!("Session '{}' already exists, opening.", project.get_name());
+            Tmux::switch(&project.get_name())?;
         } else {
             log::info!(
                 "Session '{}' does not already exist, creating and opening.",
-                project.name
+                project.get_name(),
             );
 
-            if Tmux::create_new_detached(&project.name, &project.path)
+            if Tmux::create_new_detached(&project.get_name(), &project.get_path())
                 .is_ok_and(|o| o.status.success())
             {
-                Tmux::switch(&project.name)?;
+                Tmux::switch(&project.get_name())?;
             } else {
                 eprintln!("{}", "Session failed to open.".red().bold());
             }

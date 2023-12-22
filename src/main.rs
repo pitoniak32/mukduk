@@ -8,10 +8,11 @@ use helper::{fzf_get_sessions, get_project};
 use multiplexer::{Multiplexer, Multiplexers};
 use serde::{Deserialize, Serialize};
 use std::{
+    env,
     fmt::Display,
     fs::{self, File},
     path::PathBuf,
-    process, env,
+    process,
 };
 
 mod config;
@@ -108,8 +109,7 @@ impl MukdukCli {
     fn read_config(&mut self) -> Result<()> {
         let config_path = &self.context.config_path;
         log::trace!("loading config from {}...", config_path.to_string_lossy());
-        self.context.config =
-            serde_yaml::from_str(&fs::read_to_string(config_path)?)?;
+        self.context.config = serde_yaml::from_str(&fs::read_to_string(config_path)?)?;
         log::trace!("config: {:#?}", self.context.config);
         log::trace!("config loaded!");
         Ok(())
@@ -187,17 +187,26 @@ impl MukdukCli {
             if self.args.pick_projects_dir {
                 log::trace!("user picking project dir...");
                 if let Some(dirs) = self.context.config.projects {
-                    let string_dir_names: Vec<String> = dirs.iter().map(|d| d.to_string_lossy().to_string()).collect();
+                    let string_dir_names: Vec<String> = dirs
+                        .iter()
+                        .map(|d| d.to_string_lossy().to_string())
+                        .collect();
                     let selected = PathBuf::from(FzfCmd::new().find_vec(string_dir_names)?);
-                    log::trace!("expanding project dir selection: [{}]", selected.to_string_lossy());
+                    log::trace!(
+                        "expanding project dir selection: [{}]",
+                        selected.to_string_lossy()
+                    );
                     match std::fs::canonicalize(selected) {
                         Ok(curr) => {
-                            log::trace!("user picked [{}] as project dir.", projects_dir.to_string_lossy());
+                            log::trace!(
+                                "user picked [{}] as project dir.",
+                                projects_dir.to_string_lossy()
+                            );
                             projects_dir = curr
-                        },
+                        }
                         Err(err) => {
                             log::trace!("failed expanding project dir selection. using default of [{}]: {err}", projects_dir.to_string_lossy());
-                        },
+                        }
                     }
                 }
             }
@@ -238,13 +247,13 @@ impl ProjectSubcommand {
             ProjectSubcommand::Scratch(proj_args) => {
                 proj_args.multiplexer.open(
                     &proj_args,
-                    Project {
-                        name: proj_args.name.clone().unwrap_or("scratch".to_string()),
-                        path: proj_args
+                    Project::new(
+                        proj_args
                             .project_dir
                             .clone()
                             .unwrap_or(PathBuf::from(ConfigEnvKey::Home)),
-                    },
+                        proj_args.name.clone().unwrap_or("scratch".to_string()),
+                    ),
                 )?;
                 Ok(())
             }
@@ -262,8 +271,25 @@ impl ProjectSubcommand {
 
 #[derive(Debug, Clone)]
 pub struct Project {
-    pub path: PathBuf,
-    pub name: String,
+    path: PathBuf,
+    name: String,
+}
+
+impl Project {
+    pub fn new(path: PathBuf, name: String) -> Self {
+        Project {
+            path,
+            name: name.replace(".", "_"),
+        }
+    }
+
+    pub fn get_name(&self) -> String {
+        self.name.clone()
+    }
+
+    pub fn get_path(&self) -> PathBuf {
+        self.path.clone()
+    }
 }
 
 impl Display for Project {
@@ -274,10 +300,17 @@ impl Display for Project {
 
 #[cfg(test)]
 mod tests {
+    use std::path::PathBuf;
+
     use pretty_assertions::assert_eq;
 
+    use crate::Project;
+
     #[test]
-    fn should() {
-        assert_eq!(true, false)
+    fn should_update_project_name_with_underscores() {
+        assert_eq!(
+            Project::new(PathBuf::from(""), ".test.test".to_string()).get_name(),
+            "_test_test".to_string()
+        )
     }
 }

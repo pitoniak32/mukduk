@@ -19,7 +19,7 @@ impl Zellij {
         );
 
         if Zellij::not_in() {
-            Zellij::create_attached(&project.name, &project.path)?;
+            Zellij::create_attached(&project.get_name(), &project.get_path())?;
         } else {
             eprintln!("{}", "\nZellij does not currently have support for switching sessions while inside an active session.\n\nTry detaching from your current session, and try again.\n".yellow().bold())
         }
