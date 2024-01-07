@@ -17,7 +17,7 @@ impl FzfCmd {
         }
     }
 
-    pub fn arg<S>(&mut self, arg: S) -> &mut FzfCmd
+    pub fn _arg<S>(&mut self, arg: S) -> &mut FzfCmd
     where
         S: AsRef<OsStr>,
     {

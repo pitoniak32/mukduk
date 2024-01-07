@@ -11,10 +11,9 @@ use crate::{config::ConfigEnvKey, helper::wrap_command, Project, ProjectArgs};
 pub struct Tmux;
 
 impl Tmux {
-    pub fn open(proj_args: &ProjectArgs, project: Project) -> Result<()> {
+    pub fn open(_proj_args: &ProjectArgs, project: Project) -> Result<()> {
         log::info!(
-            "Attempting to open {:?} session with project: {:?}!",
-            proj_args.multiplexer,
+            "Attempting to open Tmux session with project: {:?}!",
             project,
         );
 

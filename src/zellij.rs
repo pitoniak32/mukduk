@@ -11,12 +11,8 @@ use crate::{helper::wrap_command, Project, ProjectArgs};
 pub struct Zellij;
 
 impl Zellij {
-    pub fn open(proj_args: &ProjectArgs, project: Project) -> Result<()> {
-        log::info!(
-            "creating {:?} session with project: {:?}!",
-            proj_args.multiplexer,
-            project
-        );
+    pub fn open(_proj_args: &ProjectArgs, project: Project) -> Result<()> {
+        log::info!("creating Zellij session with project: {:?}!", project);
 
         if Zellij::not_in() {
             Zellij::create_attached(&project.get_name(), &project.get_path())?;

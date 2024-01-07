@@ -94,15 +94,17 @@ impl From<ConfigEnvKey> for PathBuf {
             ConfigEnvKey::Home => PathBuf::from(
                 env::var(ConfigEnvKey::Home.as_str()).expect("HOME env var should be set"),
             ),
-            ConfigEnvKey::XDGConfig => {
-                match env::var(ConfigEnvKey::XDGConfig.as_str()) {
-                    Ok(config_dir) => PathBuf::from(config_dir),
-                    Err(_err) => {
-                        let mut home = PathBuf::from(ConfigEnvKey::Home);
-                        home.push(".config");
-                        log::trace!("Error: error reading ${}. Using [{}]", ConfigEnvKey::XDGConfig.as_str(), home.as_os_str().to_string_lossy());
-                        home
-                    }
+            ConfigEnvKey::XDGConfig => match env::var(ConfigEnvKey::XDGConfig.as_str()) {
+                Ok(config_dir) => PathBuf::from(config_dir),
+                Err(_err) => {
+                    let mut home = PathBuf::from(ConfigEnvKey::Home);
+                    home.push(".config");
+                    log::trace!(
+                        "Error: error reading ${}. Using [{}]",
+                        ConfigEnvKey::XDGConfig.as_str(),
+                        home.as_os_str().to_string_lossy()
+                    );
+                    home
                 }
             },
             ConfigEnvKey::XDGData => PathBuf::from(
