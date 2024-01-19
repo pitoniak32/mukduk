@@ -87,14 +87,14 @@ impl MukdukCli {
                 if !path.exists() {
                     fs::create_dir(&path)?;
                 }
-                path.push("config.yml");
+                path.push("config.toml");
                 if !path.exists() {
                     File::create(&path)?;
                 }
             } else {
                 let mut path = PathBuf::from(ConfigEnvKey::Home);
                 if path.exists() {
-                    path.push(".mukdukrc.yml");
+                    path.push(".mukdukrc.toml");
                     if !path.exists() {
                         File::create(&path)?;
                     }
@@ -109,7 +109,7 @@ impl MukdukCli {
     fn read_config(&mut self) -> Result<()> {
         let config_path = &self.context.config_path;
         log::trace!("loading config from {}...", config_path.to_string_lossy());
-        self.context.config = serde_yaml::from_str(&fs::read_to_string(config_path)?)?;
+        self.context.config = toml::from_str(&fs::read_to_string(config_path)?)?;
         log::trace!("config: {:#?}", self.context.config);
         log::trace!("config loaded!");
         Ok(())
@@ -119,7 +119,7 @@ impl MukdukCli {
 #[derive(Args, Debug)]
 struct SharedArgs {
     #[arg(long, env)]
-    projects_dir: PathBuf,
+    projects_dir: Option<PathBuf>,
 
     /// Override '$XDG_CONFIG_HOME/config.yml' or '$HOME/.mukdukrc.yml' defaults.
     #[arg(short, long)]
@@ -141,7 +141,13 @@ struct MukdukContext {
 
 #[derive(Serialize, Deserialize, Debug, Clone, Default)]
 struct MukdukConfig {
-    projects: Option<Vec<PathBuf>>,
+    projects_dir: ProjectsDir,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone, Default)]
+struct ProjectsDir {
+    default: Option<PathBuf>,
+    options: Option<Vec<PathBuf>>,
 }
 
 #[derive(Subcommand)]
@@ -211,10 +217,10 @@ pub struct ProjectArgs {
 impl MukdukCli {
     fn handle_cmd(self) -> Result<()> {
         if let Some(cmd) = self.command {
-            let mut projects_dir = self.args.projects_dir;
+            let mut projects_dir = self.args.projects_dir.or_else(|| self.context.config.projects_dir.default).expect("should be set");
             if self.args.pick_projects_dir {
                 log::trace!("user picking project dir...");
-                if let Some(dirs) = self.context.config.projects {
+                if let Some(dirs) = self.context.config.projects_dir.options {
                     let string_dir_names: Vec<String> = dirs
                         .iter()
                         .map(|d| d.to_string_lossy().to_string())
