@@ -1,7 +1,12 @@
 use anyhow::Result;
 use clap::ValueEnum;
 
-use crate::{tmux::Tmux, zellij::Zellij, Project, ProjectArgs};
+use crate::{commands::project::ProjectArgs, Project};
+
+use self::{tmux::Tmux, zellij::Zellij};
+
+pub mod tmux;
+pub mod zellij;
 
 pub trait Multiplexer {
     fn open(self, proj_args: &ProjectArgs, project: Project) -> Result<()>;

@@ -6,7 +6,7 @@ use std::{
     process::{Command, Output},
 };
 
-use crate::{helper::wrap_command, Project, ProjectArgs};
+use crate::{helper::wrap_command, Project, commands::project::ProjectArgs};
 
 pub struct Zellij;
 

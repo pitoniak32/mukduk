@@ -1,12 +1,10 @@
 use anyhow::Result;
-use clap::{Args, Parser, Subcommand};
+use clap::{Args, Parser};
 use colored::Colorize;
 
+use commands::MukdukCommands;
 use config::ConfigEnvKey;
 use fzf::FzfCmd;
-use git_lib::repo::GitRepo;
-use helper::{fzf_get_sessions, get_project};
-use multiplexer::{Multiplexer, Multiplexers};
 use serde::{Deserialize, Serialize};
 use std::{
     fmt::Display,
@@ -20,8 +18,8 @@ mod helper;
 mod multiplexer;
 
 mod fzf;
-mod tmux;
-mod zellij;
+
+mod commands;
 
 fn main() -> Result<()> {
     let cli = MukdukCli::init()?;
@@ -150,74 +148,14 @@ struct ProjectsDir {
     options: Option<Vec<PathBuf>>,
 }
 
-#[derive(Subcommand)]
-enum MukdukCommands {
-    #[clap(subcommand)]
-    /// Commands for managing projects.
-    Project(ProjectSubcommand),
-}
-
-#[derive(Subcommand)]
-enum ProjectSubcommand {
-    /// Open a session.
-    Open {
-        #[clap(flatten)]
-        proj_args: ProjectArgs,
-        #[clap(flatten)]
-        sess_args: SessionArgs,
-    },
-    /// Open a scratch session. defaults: (name = scratch, path = $HOME)
-    Scratch {
-        #[clap(flatten)]
-        proj_args: ProjectArgs,
-        #[clap(flatten)]
-        sess_args: SessionArgs,
-    },
-    /// Kill sessions.
-    Kill {
-        #[clap(flatten)]
-        proj_args: ProjectArgs,
-        #[clap(flatten)]
-        sess_args: SessionArgs,
-    },
-    /// Open new unique session in $HOME and increment prefix (available: 0-9).
-    Home {
-        #[clap(flatten)]
-        proj_args: ProjectArgs,
-        #[clap(flatten)]
-        sess_args: SessionArgs,
-    },
-    /// Clone a new repo into your projects dir.
-    New {
-        #[clap(flatten)]
-        proj_args: ProjectArgs,
-        ssh_uri: String,
-    }, // Like ThePrimagen Harpoon in nvim but for multiplexer sessions
-       // Harpoon(ProjectArgs),
-}
-
-#[derive(Args, Debug)]
-pub struct SessionArgs {
-    #[arg(short, long)]
-    /// Which multiplexer session should be created.
-    pub multiplexer: Multiplexers,
-}
-
-#[derive(Args, Debug)]
-pub struct ProjectArgs {
-    #[arg(short, long)]
-    /// Name of session, defaults to project_dir name
-    pub name: Option<String>,
-
-    #[arg(short, long)]
-    /// Name of session, defaults to project_dir name
-    pub project_dir: Option<PathBuf>,
-}
-
 impl MukdukCli {
     fn handle_cmd(self) -> Result<()> {
         if let Some(cmd) = self.command {
-            let mut projects_dir = self.args.projects_dir.or_else(|| self.context.config.projects_dir.default).expect("should be set");
+            let mut projects_dir = self
+                .args
+                .projects_dir
+                .or_else(|| self.context.config.projects_dir.default)
+                .expect("should be set");
             if self.args.pick_projects_dir {
                 log::trace!("user picking project dir...");
                 if let Some(dirs) = self.context.config.projects_dir.options {
@@ -256,75 +194,6 @@ impl MukdukCli {
         }
 
         Ok(())
-    }
-}
-
-impl MukdukCommands {
-    fn handle_cmd(mukduk_command: MukdukCommands, projects_dir: PathBuf) -> Result<()> {
-        match mukduk_command {
-            MukdukCommands::Project(project_sub_cmd) => {
-                ProjectSubcommand::handle_cmd(project_sub_cmd, projects_dir)
-            }
-        }
-    }
-}
-
-impl ProjectSubcommand {
-    fn handle_cmd(project_sub_cmd: ProjectSubcommand, projects_dir: PathBuf) -> Result<()> {
-        match project_sub_cmd {
-            ProjectSubcommand::Open {
-                proj_args,
-                sess_args,
-            } => {
-                let project =
-                    get_project(projects_dir, &proj_args.project_dir, proj_args.name.clone())?;
-                sess_args.multiplexer.open(&proj_args, project)?;
-                Ok(())
-            }
-            ProjectSubcommand::Scratch {
-                proj_args,
-                sess_args,
-            } => {
-                sess_args.multiplexer.open(
-                    &proj_args,
-                    Project::new(
-                        proj_args
-                            .project_dir
-                            .clone()
-                            .unwrap_or(PathBuf::from(ConfigEnvKey::Home)),
-                        proj_args.name.clone().unwrap_or("scratch".to_string()),
-                    ),
-                )?;
-                Ok(())
-            }
-            ProjectSubcommand::Kill {
-                proj_args: _,
-                sess_args,
-            } => {
-                let sessions = sess_args.multiplexer.get_sessions();
-                log::debug!("sessions: {sessions:?}");
-                let picked_sessions = fzf_get_sessions(sessions)?;
-                sess_args.multiplexer.kill_sessions(picked_sessions)?;
-                Ok(())
-            }
-            ProjectSubcommand::Home {
-                proj_args: _,
-                sess_args,
-            } => sess_args.multiplexer.unique_session(),
-            ProjectSubcommand::New {
-                proj_args: _,
-                ssh_uri,
-            } => {
-                log::debug!("Attempting to clone {ssh_uri}...");
-                let results = GitRepo::from_ssh_uri_multi(&[&ssh_uri], &projects_dir);
-                for result in results {
-                    if let Err(err) = result {
-                        log::error!("Failed cloning with: {err:?}");
-                    }
-                }
-                Ok(())
-            }
-        }
     }
 }
 
