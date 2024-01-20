@@ -31,20 +31,21 @@ pub fn get_project(
     project_dir: &Option<PathBuf>,
     name: Option<String>,
 ) -> Result<Project> {
-    if let Some(selected_project) = project_dir {
-        Ok(Project::new(
-            selected_project.clone(),
-            name.unwrap_or(
-                selected_project
-                    .file_name()
-                    .expect("selected project should have a valid file / dir name.")
-                    .to_string_lossy()
-                    .to_string(),
-            ),
-        ))
-    } else {
-        pick_project(projects_dir)
-    }
+    project_dir.as_ref().map_or_else(
+        || pick_project(projects_dir),
+        |selected_project| {
+            Ok(Project::new(
+                selected_project.clone(),
+                name.unwrap_or_else(|| {
+                    selected_project
+                        .file_name()
+                        .expect("selected project should have a valid file / dir name.")
+                        .to_string_lossy()
+                        .to_string()
+                }),
+            ))
+        },
+    )
 }
 
 pub fn pick_project(proj_dir: PathBuf) -> Result<Project> {
@@ -69,12 +70,16 @@ pub fn pick_project(proj_dir: PathBuf) -> Result<Project> {
 
     let project_name = FzfCmd::new().find_vec(project_names)?;
 
-    if let Some(project) = projects.iter().find(|p| p.name == project_name) {
-        Ok(project.clone())
-    } else {
-        eprintln!("{}", "No project was selected.".red().bold());
-        std::process::exit(1);
-    }
+    projects
+        .iter()
+        .find(|p| p.name == project_name)
+        .map_or_else(
+            || {
+                eprintln!("{}", "No project was selected.".red().bold());
+                std::process::exit(1);
+            },
+            |project| Ok(project.clone()),
+        )
 }
 
 pub fn fzf_get_sessions(session_names: Vec<String>) -> Result<Vec<String>> {

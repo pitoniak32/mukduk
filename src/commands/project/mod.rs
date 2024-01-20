@@ -2,7 +2,12 @@ use clap::{Args, Subcommand};
 use git_lib::repo::GitRepo;
 use std::path::PathBuf;
 
-use crate::{multiplexer::{Multiplexers, Multiplexer}, helper::{get_project, fzf_get_sessions}, Project, config::ConfigEnvKey};
+use crate::{
+    config::ConfigEnvKey,
+    helper::{fzf_get_sessions, get_project},
+    multiplexer::{Multiplexer, Multiplexers},
+    Project,
+};
 
 #[derive(Args, Debug)]
 pub struct SessionArgs {
@@ -62,9 +67,9 @@ pub enum ProjectSubcommand {
 }
 
 impl ProjectSubcommand {
-    pub fn handle_cmd(project_sub_cmd: ProjectSubcommand, projects_dir: PathBuf) -> anyhow::Result<()> {
+    pub fn handle_cmd(project_sub_cmd: Self, projects_dir: PathBuf) -> anyhow::Result<()> {
         match project_sub_cmd {
-            ProjectSubcommand::Open {
+            Self::Open {
                 proj_args,
                 sess_args,
             } => {
@@ -73,7 +78,7 @@ impl ProjectSubcommand {
                 sess_args.multiplexer.open(&proj_args, project)?;
                 Ok(())
             }
-            ProjectSubcommand::Scratch {
+            Self::Scratch {
                 proj_args,
                 sess_args,
             } => {
@@ -83,13 +88,16 @@ impl ProjectSubcommand {
                         proj_args
                             .project_dir
                             .clone()
-                            .unwrap_or(PathBuf::from(ConfigEnvKey::Home)),
-                        proj_args.name.clone().unwrap_or("scratch".to_string()),
+                            .unwrap_or(PathBuf::try_from(ConfigEnvKey::Home)?),
+                        proj_args
+                            .name
+                            .clone()
+                            .unwrap_or_else(|| "scratch".to_string()),
                     ),
                 )?;
                 Ok(())
             }
-            ProjectSubcommand::Kill {
+            Self::Kill {
                 proj_args: _,
                 sess_args,
             } => {
@@ -99,11 +107,11 @@ impl ProjectSubcommand {
                 sess_args.multiplexer.kill_sessions(picked_sessions)?;
                 Ok(())
             }
-            ProjectSubcommand::Home {
+            Self::Home {
                 proj_args: _,
                 sess_args,
             } => sess_args.multiplexer.unique_session(),
-            ProjectSubcommand::New {
+            Self::New {
                 proj_args: _,
                 ssh_uri,
             } => {

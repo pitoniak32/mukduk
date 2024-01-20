@@ -49,7 +49,7 @@ impl MukdukCli {
         // let config_dir: PathBuf = PathBuf::from(ConfigEnvKey::XDGConfig);
         // let data_dir: PathBuf = PathBuf::from(ConfigEnvKey::XDGData);
         // let state_dir: PathBuf = PathBuf::from(ConfigEnvKey::XDGState);
-        let mut cli = MukdukCli::parse();
+        let mut cli = Self::parse();
         env_logger::builder()
             .filter_level(cli.args.verbosity.log_level_filter())
             .parse_default_env()
@@ -76,10 +76,10 @@ impl MukdukCli {
                     process::exit(1);
                 }
                 self.args.config_path = Some(curr.clone());
-                self.context.config_path = curr.clone();
+                self.context.config_path = curr;
             }
         } else {
-            let mut path = PathBuf::from(ConfigEnvKey::XDGConfig);
+            let mut path = PathBuf::try_from(ConfigEnvKey::XDGConfig)?;
             if path.exists() {
                 path.push("mukduk");
                 if !path.exists() {
@@ -90,7 +90,7 @@ impl MukdukCli {
                     File::create(&path)?;
                 }
             } else {
-                let mut path = PathBuf::from(ConfigEnvKey::Home);
+                let mut path = PathBuf::try_from(ConfigEnvKey::Home)?;
                 if path.exists() {
                     path.push(".mukdukrc.toml");
                     if !path.exists() {
@@ -154,7 +154,7 @@ impl MukdukCli {
             let mut projects_dir = self
                 .args
                 .projects_dir
-                .or_else(|| self.context.config.projects_dir.default)
+                .or(self.context.config.projects_dir.default)
                 .expect("should be set");
             if self.args.pick_projects_dir {
                 log::trace!("user picking project dir...");
@@ -205,7 +205,7 @@ pub struct Project {
 
 impl Project {
     pub fn new(path: PathBuf, name: String) -> Self {
-        Project {
+        Self {
             path,
             name: name.replace('.', "_"),
         }

@@ -6,7 +6,7 @@ use std::{
     process::{Command, Output},
 };
 
-use crate::{helper::wrap_command, Project, commands::project::ProjectArgs};
+use crate::{commands::project::ProjectArgs, helper::wrap_command, Project};
 
 pub struct Zellij;
 
@@ -14,8 +14,8 @@ impl Zellij {
     pub fn open(_proj_args: &ProjectArgs, project: Project) -> Result<()> {
         log::info!("creating Zellij session with project: {:?}!", project);
 
-        if Zellij::not_in() {
-            Zellij::create_attached(&project.get_name(), &project.get_path())?;
+        if Self::not_in() {
+            Self::create_attached(&project.get_name(), &project.get_path())?;
         } else {
             eprintln!("{}", "\nZellij does not currently have support for switching sessions while inside an active session.\n\nTry detaching from your current session, and try again.\n".yellow().bold())
         }
@@ -38,7 +38,7 @@ impl Zellij {
 
     pub fn kill_sessions(sessions: &[String]) -> Result<()> {
         sessions.iter().for_each(|s| {
-            if Zellij::kill_session(s).is_ok() {
+            if Self::kill_session(s).is_ok() {
                 log::info!("killed {}", s)
             } else {
                 log::error!("error while killing {}", s)

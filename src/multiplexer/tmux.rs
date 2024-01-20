@@ -6,7 +6,7 @@ use std::{
     process::{Command, Output},
 };
 
-use crate::{config::ConfigEnvKey, helper::wrap_command, Project, commands::project::ProjectArgs};
+use crate::{commands::project::ProjectArgs, config::ConfigEnvKey, helper::wrap_command, Project};
 
 pub struct Tmux;
 
@@ -17,21 +17,21 @@ impl Tmux {
             project,
         );
 
-        if !Tmux::in_session() {
-            Tmux::create_new_attached_attach_if_exists(&project.get_name(), &project.get_path())?;
-        } else if Tmux::has_session(&project.get_name()) {
+        if !Self::in_session() {
+            Self::create_new_attached_attach_if_exists(&project.get_name(), &project.get_path())?;
+        } else if Self::has_session(&project.get_name()) {
             log::info!("Session '{}' already exists, opening.", project.get_name());
-            Tmux::switch(&project.get_name())?;
+            Self::switch(&project.get_name())?;
         } else {
             log::info!(
                 "Session '{}' does not already exist, creating and opening.",
                 project.get_name(),
             );
 
-            if Tmux::create_new_detached(&project.get_name(), &project.get_path())
+            if Self::create_new_detached(&project.get_name(), &project.get_path())
                 .is_ok_and(|o| o.status.success())
             {
-                Tmux::switch(&project.get_name())?;
+                Self::switch(&project.get_name())?;
             } else {
                 eprintln!("{}", "Session failed to open.".red().bold());
             }
@@ -55,7 +55,7 @@ impl Tmux {
 
     pub fn kill_sessions(sessions: &[String]) -> Result<()> {
         sessions.iter().for_each(|s| {
-            if Tmux::kill_session(s).is_ok() {
+            if Self::kill_session(s).is_ok() {
                 if s.is_empty() {
                     log::warn!("No session picked");
                 } else {
@@ -71,11 +71,11 @@ impl Tmux {
     pub fn unique_session() -> Result<()> {
         for i in 0..10 {
             let name = &i.to_string();
-            if !Tmux::has_session(name) {
-                if Tmux::create_new_detached(name, &PathBuf::from(ConfigEnvKey::Home))
+            if !Self::has_session(name) {
+                if Self::create_new_detached(name, &PathBuf::try_from(ConfigEnvKey::Home)?)
                     .is_ok_and(|o| o.status.success())
                 {
-                    Tmux::switch(name)?;
+                    Self::switch(name)?;
                     break;
                 } else {
                     eprintln!("{}", "Session failed to open.".red().bold());

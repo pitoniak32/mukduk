@@ -24,10 +24,10 @@ pub enum Multiplexers {
 impl Multiplexer for Multiplexers {
     fn open(self, proj_args: &ProjectArgs, project: Project) -> Result<()> {
         match self {
-            Multiplexers::Tmux => {
+            Self::Tmux => {
                 Tmux::open(proj_args, project)?;
             }
-            Multiplexers::Zellij => {
+            Self::Zellij => {
                 Zellij::open(proj_args, project)?;
             }
         }
@@ -36,22 +36,22 @@ impl Multiplexer for Multiplexers {
 
     fn get_sessions(self) -> Vec<String> {
         match self {
-            Multiplexers::Tmux => Tmux::list_sessions(),
-            Multiplexers::Zellij => Zellij::list_sessions(),
+            Self::Tmux => Tmux::list_sessions(),
+            Self::Zellij => Zellij::list_sessions(),
         }
     }
 
     fn kill_sessions(self, sessions: Vec<String>) -> Result<()> {
         match self {
-            Multiplexers::Tmux => Tmux::kill_sessions(&sessions),
-            Multiplexers::Zellij => Zellij::kill_sessions(&sessions),
+            Self::Tmux => Tmux::kill_sessions(&sessions),
+            Self::Zellij => Zellij::kill_sessions(&sessions),
         }
     }
 
     fn unique_session(self) -> Result<()> {
         match self {
-            Multiplexers::Tmux => Tmux::unique_session(),
-            Multiplexers::Zellij => todo!(),
+            Self::Tmux => Tmux::unique_session(),
+            Self::Zellij => todo!(),
         }
     }
 }

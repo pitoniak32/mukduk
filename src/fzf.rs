@@ -12,12 +12,12 @@ pub struct FzfCmd {
 
 impl FzfCmd {
     pub fn new() -> Self {
-        FzfCmd {
+        Self {
             command: Command::new("fzf"),
         }
     }
 
-    pub fn _arg<S>(&mut self, arg: S) -> &mut FzfCmd
+    pub fn _arg<S>(&mut self, arg: S) -> &mut Self
     where
         S: AsRef<OsStr>,
     {
@@ -25,7 +25,7 @@ impl FzfCmd {
         self
     }
 
-    pub fn args<I, S>(&mut self, args: I) -> &mut FzfCmd
+    pub fn args<I, S>(&mut self, args: I) -> &mut Self
     where
         I: IntoIterator<Item = S>,
         S: AsRef<OsStr>,

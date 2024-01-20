@@ -12,9 +12,9 @@ pub enum MukdukCommands {
 }
 
 impl MukdukCommands {
-    pub fn handle_cmd(mukduk_command: MukdukCommands, projects_dir: PathBuf) -> anyhow::Result<()> {
+    pub fn handle_cmd(mukduk_command: Self, projects_dir: PathBuf) -> anyhow::Result<()> {
         match mukduk_command {
-            MukdukCommands::Project(project_sub_cmd) => {
+            Self::Project(project_sub_cmd) => {
                 ProjectSubcommand::handle_cmd(project_sub_cmd, projects_dir)
             }
         }
