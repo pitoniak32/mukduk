@@ -4,7 +4,7 @@ use std::path::PathBuf;
 use self::project::ProjectSubcommand;
 pub mod project;
 
-#[derive(Subcommand)]
+#[derive(Subcommand, Debug)]
 pub enum MukdukCommands {
     #[clap(subcommand)]
     /// Commands for managing projects.

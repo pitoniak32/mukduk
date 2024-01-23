@@ -6,7 +6,7 @@ use crate::{
     config::ConfigEnvKey,
     helper::{fzf_get_sessions, get_project},
     multiplexer::{Multiplexer, Multiplexers},
-    Project,
+    project::Project,
 };
 
 #[derive(Args, Debug)]
@@ -27,7 +27,7 @@ pub struct ProjectArgs {
     pub project_dir: Option<PathBuf>,
 }
 
-#[derive(Subcommand)]
+#[derive(Subcommand, Debug)]
 pub enum ProjectSubcommand {
     /// Open a session.
     Open {

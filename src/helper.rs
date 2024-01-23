@@ -7,7 +7,7 @@ use std::{
 use anyhow::Result;
 use colored::Colorize;
 
-use crate::{fzf::FzfCmd, Project};
+use crate::{fzf::FzfCmd, project::Project};
 
 pub fn wrap_command(command: &mut Command) -> Result<Output> {
     let output = command

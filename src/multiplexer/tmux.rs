@@ -6,7 +6,9 @@ use std::{
     process::{Command, Output},
 };
 
-use crate::{commands::project::ProjectArgs, config::ConfigEnvKey, helper::wrap_command, Project};
+use crate::{
+    commands::project::ProjectArgs, config::ConfigEnvKey, helper::wrap_command, project::Project,
+};
 
 pub struct Tmux;
 

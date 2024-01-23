@@ -1,6 +1,29 @@
-use std::{env, path::PathBuf};
+use anyhow::Result;
+use std::{env, fs, path::PathBuf};
 
+use serde::{Deserialize, Serialize};
 use thiserror::Error;
+
+#[derive(Serialize, Deserialize, Debug, Clone, Default)]
+pub struct MukdukConfig {
+    pub projects_dir: ProjectsDir,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone, Default)]
+pub struct ProjectsDir {
+    pub default: Option<PathBuf>,
+    pub options: Option<Vec<PathBuf>>,
+}
+
+impl MukdukConfig {
+    pub fn from_file(config_path: &PathBuf) -> Result<Self> {
+        log::trace!("loading config from {}...", config_path.to_string_lossy());
+        let loaded_config = toml::from_str(&fs::read_to_string(config_path)?)?;
+        log::trace!("config: {:#?}", loaded_config);
+        log::trace!("config loaded!");
+        Ok(loaded_config)
+    }
+}
 
 /// # Use this for reading config from Environment Variables
 /// The goal with this enum is to provide a way to access typed configuration from Environment

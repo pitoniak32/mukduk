@@ -1,7 +1,7 @@
 use anyhow::Result;
 use clap::ValueEnum;
 
-use crate::{commands::project::ProjectArgs, Project};
+use crate::{commands::project::ProjectArgs, project::Project};
 
 use self::{tmux::Tmux, zellij::Zellij};
 
