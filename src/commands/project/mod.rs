@@ -1,10 +1,10 @@
-use clap::{Args, Subcommand};
+use clap::{Args, Subcommand, ValueEnum};
 use git_lib::repo::GitRepo;
 use std::path::PathBuf;
 
 use crate::{
     config::ConfigEnvKey,
-    helper::{fzf_get_sessions, get_project},
+    helper::{fzf_get_sessions, get_project, get_projects},
     multiplexer::{Multiplexer, Multiplexers},
     project::Project,
 };
@@ -57,6 +57,11 @@ pub enum ProjectSubcommand {
         #[clap(flatten)]
         sess_args: SessionArgs,
     },
+    /// List all projects in your projects dir.
+    List {
+        #[arg(short, long, value_enum, default_value_t=OutputFormat::Debug)]
+        output: OutputFormat,
+    },
     /// Clone a new repo into your projects dir.
     New {
         #[clap(flatten)]
@@ -64,6 +69,18 @@ pub enum ProjectSubcommand {
         ssh_uri: String,
     }, // Like ThePrimagen Harpoon in nvim but for multiplexer sessions
        // Harpoon(ProjectArgs),
+}
+
+#[derive(ValueEnum, Debug, Clone)]
+pub enum OutputFormat {
+    /// Rust Debug print.
+    Debug,
+    /// Pretty printed json.
+    Json,
+    /// Raw printed json.
+    JsonR,
+    /// yaml.
+    Yaml,
 }
 
 impl ProjectSubcommand {
@@ -120,6 +137,22 @@ impl ProjectSubcommand {
                 for result in results {
                     if let Err(err) = result {
                         log::error!("Failed cloning with: {err:?}");
+                    }
+                }
+                Ok(())
+            }
+            Self::List { output } => {
+                let projects = get_projects(&projects_dir)?;
+                match output {
+                    OutputFormat::Debug => {
+                        println!("{:#?}", projects);
+                    }
+                    OutputFormat::Json => {
+                        println!("{}", serde_json::to_string_pretty(&projects)?)
+                    }
+                    OutputFormat::Yaml => println!("{}", serde_yaml::to_string(&projects)?),
+                    OutputFormat::JsonR => {
+                        println!("{}", serde_json::to_string(&projects)?)
                     }
                 }
                 Ok(())

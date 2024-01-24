@@ -48,11 +48,9 @@ pub fn get_project(
     )
 }
 
-pub fn pick_project(proj_dir: PathBuf) -> Result<Project> {
-    log::info!("Using project_dir: {:?}", &proj_dir);
-
+pub fn get_projects(proj_dir: &PathBuf) -> Result<Vec<Project>> {
     let projects: Vec<_> = get_directories(proj_dir)?
-        .iter()
+        .into_iter()
         .map(|d| {
             Project::new(
                 d.to_path_buf(),
@@ -63,7 +61,13 @@ pub fn pick_project(proj_dir: PathBuf) -> Result<Project> {
             )
         })
         .collect();
+    Ok(projects)
+}
 
+pub fn pick_project(proj_dir: PathBuf) -> Result<Project> {
+    log::info!("Using project_dir: {:?}", &proj_dir);
+
+    let projects: Vec<_> = get_projects(&proj_dir)?;
     let project_names = projects.iter().map(|p| p.name.clone()).collect::<Vec<_>>();
 
     log::debug!("projects: {projects:#?}");
@@ -97,7 +101,7 @@ pub fn fzf_get_sessions(session_names: Vec<String>) -> Result<Vec<String>> {
         .collect())
 }
 
-pub fn get_directories(path: PathBuf) -> Result<Vec<PathBuf>> {
+pub fn get_directories(path: &PathBuf) -> Result<Vec<PathBuf>> {
     Ok(fs::read_dir(path)?
         .filter_map(|dir| match dir {
             Ok(dir) => match dir.file_type() {

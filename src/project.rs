@@ -1,6 +1,8 @@
 use std::{fmt::Display, path::PathBuf};
 
-#[derive(Debug, Clone)]
+use serde::Serialize;
+
+#[derive(Debug, Clone, Serialize)]
 pub struct Project {
     pub path: PathBuf,
     pub name: String,

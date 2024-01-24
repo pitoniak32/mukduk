@@ -52,12 +52,6 @@ struct MukdukContext {
     config: MukdukConfig,
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone, Default)]
-struct ProjectsDir {
-    default: Option<PathBuf>,
-    options: Option<Vec<PathBuf>>,
-}
-
 impl MukdukCli {
     pub fn init() -> Result<Self> {
         let mut cli = Self::parse();
